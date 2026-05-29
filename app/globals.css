@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #FAFAF8;
+}
+
+:root {
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 99px; }
+
+@layer components {
+  .chat-user {
+    @apply bg-violet-600 text-white rounded-2xl rounded-br-sm px-4 py-3 text-sm leading-relaxed max-w-[85%] ml-auto;
+  }
+  .chat-ai {
+    @apply bg-white border border-gray-100 text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 text-sm leading-relaxed max-w-[90%] shadow-sm;
+  }
+  .conf-bar {
+    @apply h-1.5 rounded-full bg-gray-100 overflow-hidden;
+  }
+  .conf-fill {
+    @apply h-full rounded-full transition-all duration-500;
+  }
+  .phase-connector {
+    @apply h-0.5 flex-1 bg-gray-200;
+  }
+  .phase-connector.done {
+    @apply bg-violet-500;
+  }
+}
+
+.typing-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #9CA3AF;
+  animation: pulseDot 1.4s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes pulseDot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-5px); opacity: 1; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.4s ease both;
+}
