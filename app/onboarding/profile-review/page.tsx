@@ -327,20 +327,25 @@ function ProfileContent() {
       setProfileId(profileToUse.id)
       setProfileData(profileToUse.profile_data)
 
-      // Check for unprocessed documents (uploaded but not yet compared against profile)
+      // Check for documents that haven't been enriched yet
       const { data: docs } = await supabase.from('documents')
         .select('*').eq('child_id', childId).eq('processing_status', 'complete')
 
-      // Check if enrichment already done for these docs
+      // Check which doc IDs have already been enriched
       const { data: enrichmentState } = await supabase.from('agent_state')
         .select('*').eq('child_id', childId).eq('agent_type', 'doc-enrichment-complete').maybeSingle()
 
-      const docsNeedEnrichment = docs && docs.length > 0 && !enrichmentState
+      const enrichedIds: string[] = enrichmentState?.state_data
+        ? ((enrichmentState.state_data as Record<string, unknown>).enrichedDocIds as string[] || [])
+        : []
+
+      const unenrichedDocs = (docs || []).filter(d => !enrichedIds.includes(d.id as string))
+      const docsNeedEnrichment = unenrichedDocs.length > 0
 
       if (docsNeedEnrichment) {
         // Run enrichment before showing profile sections
         setEnrichmentPhase('enriching')
-        await runDocumentEnrichment(docs, profileToUse, childData)
+        await runDocumentEnrichment(unenrichedDocs, profileToUse, childData, enrichedIds)
       } else {
         setEnrichmentPhase('done')
         buildSections(profileToUse.profile_data, childData.name)
@@ -353,7 +358,8 @@ function ProfileContent() {
   const runDocumentEnrichment = async (
     docs: Record<string, unknown>[],
     profile: Record<string, unknown>,
-    childData: Record<string, unknown>
+    childData: Record<string, unknown>,
+    previouslyEnrichedIds: string[] = []
   ) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -450,11 +456,12 @@ function ProfileContent() {
       setEnrichmentMessages([openingMsg])
 
       // Persist
+      const docIdsForEnrichment = docs.map(d => d.id as string)
       await supabase.from('agent_state').upsert({
         child_id: childId, user_id: user.id,
         agent_type: 'doc-enrichment-latest',
         messages: [openingMsg],
-        state_data: { comparison },
+        state_data: { comparison, previouslyEnrichedIds: previouslyEnrichedIds, currentDocIds: docIdsForEnrichment },
         updated_at: new Date().toISOString(),
       }, { onConflict: 'child_id,agent_type' })
     } else {
@@ -479,11 +486,12 @@ function ProfileContent() {
       setEnrichmentMessages([summaryMsg])
       setEnrichmentComplete(true)
 
+      const newEnrichedIds = [...previouslyEnrichedIds, ...docs.map(d => d.id as string)]
       await supabase.from('agent_state').upsert({
         child_id: childId, user_id: user.id,
         agent_type: 'doc-enrichment-complete',
         messages: [summaryMsg],
-        state_data: { completedAt: new Date().toISOString() },
+        state_data: { completedAt: new Date().toISOString(), enrichedDocIds: newEnrichedIds },
         updated_at: new Date().toISOString(),
       }, { onConflict: 'child_id,agent_type' })
     }
@@ -532,11 +540,15 @@ function ProfileContent() {
   const finishEnrichment = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    // Get all complete doc IDs to mark as enriched
+    const { data: allDocs } = await supabase.from('documents')
+      .select('id').eq('child_id', childId).eq('processing_status', 'complete')
+    const allDocIds = (allDocs || []).map(d => d.id as string)
     await supabase.from('agent_state').upsert({
       child_id: childId, user_id: user.id,
       agent_type: 'doc-enrichment-complete',
-      messages: [],
-      state_data: { completedAt: new Date().toISOString() },
+      messages: enrichmentMessages,
+      state_data: { completedAt: new Date().toISOString(), enrichedDocIds: allDocIds },
       updated_at: new Date().toISOString(),
     }, { onConflict: 'child_id,agent_type' })
     setEnrichmentPhase('done')
