@@ -419,11 +419,19 @@ function ProfileContent() {
               </div>
             </div>
 
-            {/* Show preview of content */}
+            {/* Content — clipped preview when unconfirmed, fully scrollable when confirmed */}
             <div className="px-5 pb-4">
-              <div className="text-xs text-gray-600 leading-relaxed bg-gray-50 rounded-xl p-3 whitespace-pre-wrap line-clamp-4">
-                {section.content}
-              </div>
+              {section.confirmed ? (
+                <div
+                  className="text-xs text-gray-600 leading-relaxed bg-emerald-50 rounded-xl p-3 whitespace-pre-wrap overflow-y-auto"
+                  style={{ maxHeight: 260 }}>
+                  {section.content}
+                </div>
+              ) : (
+                <div className="text-xs text-gray-400 leading-relaxed bg-gray-50 rounded-xl p-3 line-clamp-2">
+                  {section.content.split('\n')[0]}
+                </div>
+              )}
             </div>
           </div>
         ))}
