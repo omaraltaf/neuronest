@@ -96,8 +96,8 @@ function IntakeContent() {
       if (!user) return
 
       const [{ data: childData }, { data: existingSession }] = await Promise.all([
-        supabase.schema('neuronest').from('children').select('*').eq('id', childId).single(),
-        supabase.schema('neuronest').from('intake_sessions')
+        supabase.from('children').select('*').eq('id', childId).single(),
+        supabase.from('intake_sessions')
           .select('*').eq('child_id', childId).eq('status', 'in_progress').maybeSingle(),
       ])
 
@@ -113,7 +113,7 @@ function IntakeContent() {
       }
 
       // Create new session + kick off with opening message
-      const { data: newSession } = await supabase.schema('neuronest').from('intake_sessions').insert({
+      const { data: newSession } = await supabase.from('intake_sessions').insert({
         child_id: childId,
         user_id: user.id,
         messages: [],
@@ -125,7 +125,7 @@ function IntakeContent() {
       setSessionId(newSession.id)
 
       // Load documents for context
-      const { data: docs } = await supabase.schema('neuronest').from('documents')
+      const { data: docs } = await supabase.from('documents')
         .select('file_name, doc_type, extracted_data').eq('child_id', childId)
 
       const docContext = docs?.length
@@ -152,7 +152,7 @@ function IntakeContent() {
       const firstMsg: ChatMessage = { role: 'assistant', content: clean, timestamp: new Date().toISOString() }
       setMessages([firstMsg])
 
-      await supabase.schema('neuronest').from('intake_sessions')
+      await supabase.from('intake_sessions')
         .update({ messages: [firstMsg], updated_at: new Date().toISOString() })
         .eq('id', newSession.id)
 
@@ -199,7 +199,7 @@ function IntakeContent() {
       if (isSynthesisReady) setReadyForSynthesis(true)
 
       // Save to DB
-      await supabase.schema('neuronest').from('intake_sessions').update({
+      await supabase.from('intake_sessions').update({
         messages: updatedMessages,
         domain_confidence: updatedConfidence,
         updated_at: new Date().toISOString(),
@@ -218,10 +218,10 @@ function IntakeContent() {
 
   const proceedToProfile = async () => {
     if (!sessionId) return
-    await supabase.schema('neuronest').from('intake_sessions')
+    await supabase.from('intake_sessions')
       .update({ status: 'complete', completed_at: new Date().toISOString() })
       .eq('id', sessionId)
-    await supabase.schema('neuronest').from('app_state')
+    await supabase.from('app_state')
       .update({ intake_complete: true, current_phase: 'profile_review', updated_at: new Date().toISOString() })
       .eq('child_id', childId)
     router.push(`/onboarding/profile-review?child=${childId}&session=${sessionId}`)

@@ -8,7 +8,7 @@ export default async function DashboardPage() {
   if (!user) redirect('/login')
 
   // Get child
-  const { data: children } = await supabase.schema('neuronest').from('children')
+  const { data: children } = await supabase.from('children')
     .select('*').eq('user_id', user.id).order('created_at', { ascending: true })
 
   // No child yet → onboarding
@@ -19,7 +19,7 @@ export default async function DashboardPage() {
   const child = children[0]
 
   // Get app state
-  const { data: appState } = await supabase.schema('neuronest').from('app_state')
+  const { data: appState } = await supabase.from('app_state')
     .select('*').eq('child_id', child.id).maybeSingle()
 
   // Route based on phase
@@ -31,12 +31,12 @@ export default async function DashboardPage() {
   }
   if (appState.current_phase === 'profile_review') {
     // Find latest session
-    const { data: session } = await supabase.schema('neuronest').from('intake_sessions')
+    const { data: session } = await supabase.from('intake_sessions')
       .select('id').eq('child_id', child.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
     redirect(`/onboarding/profile-review?child=${child.id}&session=${session?.id || ''}`)
   }
   if (appState.current_phase === 'plan_generation' || appState.current_phase === 'plan_feedback') {
-    const { data: profile } = await supabase.schema('neuronest').from('child_profiles')
+    const { data: profile } = await supabase.from('child_profiles')
       .select('id').eq('child_id', child.id).eq('is_current', true).maybeSingle()
     redirect(`/onboarding/plan?child=${child.id}&profile=${profile?.id || ''}`)
   }
@@ -51,11 +51,11 @@ export default async function DashboardPage() {
     { data: recentCheckin },
     { data: currentPlan },
   ] = await Promise.all([
-    supabase.schema('neuronest').from('goals').select('*').eq('child_id', child.id).neq('status', 'achieved'),
-    supabase.schema('neuronest').from('session_logs').select('*').eq('child_id', child.id).gte('logged_at', today.toISOString()),
-    supabase.schema('neuronest').from('session_logs').select('logged_at').eq('child_id', child.id).gte('logged_at', new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString()),
-    supabase.schema('neuronest').from('weekly_checkins').select('*').eq('child_id', child.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-    supabase.schema('neuronest').from('plans').select('*').eq('child_id', child.id).eq('is_current', true).maybeSingle(),
+    supabase.from('goals').select('*').eq('child_id', child.id).neq('status', 'achieved'),
+    supabase.from('session_logs').select('*').eq('child_id', child.id).gte('logged_at', today.toISOString()),
+    supabase.from('session_logs').select('logged_at').eq('child_id', child.id).gte('logged_at', new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString()),
+    supabase.from('weekly_checkins').select('*').eq('child_id', child.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('plans').select('*').eq('child_id', child.id).eq('is_current', true).maybeSingle(),
   ])
 
   // Streak

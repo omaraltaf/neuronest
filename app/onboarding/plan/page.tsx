@@ -58,8 +58,8 @@ function PlanContent() {
     if (!childId || !profileId) return
     const load = async () => {
       const [{ data: childData }, { data: profileData }] = await Promise.all([
-        supabase.schema('neuronest').from('children').select('*').eq('id', childId).single(),
-        supabase.schema('neuronest').from('child_profiles').select('*').eq('id', profileId).single(),
+        supabase.from('children').select('*').eq('id', childId).single(),
+        supabase.from('child_profiles').select('*').eq('id', profileId).single(),
       ])
       if (childData) setChild(childData as Child)
       if (profileData) setProfile(profileData as ChildProfile)
@@ -84,7 +84,7 @@ function PlanContent() {
     const { plan, message } = await res.json()
 
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: savedPlan } = await supabase.schema('neuronest').from('plans').insert({
+    const { data: savedPlan } = await supabase.from('plans').insert({
       child_id: childId,
       user_id: user!.id,
       profile_id: profileId,
@@ -151,14 +151,14 @@ function PlanContent() {
         generalisation_plan: g.generalisation_plan || null,
         status: 'not_started',
       }))
-      await supabase.schema('neuronest').from('goals').insert(goals)
+      await supabase.from('goals').insert(goals)
     }
 
     await Promise.all([
-      supabase.schema('neuronest').from('plans')
+      supabase.from('plans')
         .update({ status: 'active', parent_approved: true, approved_at: new Date().toISOString(), activated_at: new Date().toISOString() })
         .eq('id', planId),
-      supabase.schema('neuronest').from('app_state')
+      supabase.from('app_state')
         .update({ plan_approved: true, current_phase: 'active', updated_at: new Date().toISOString() })
         .eq('child_id', childId),
     ])

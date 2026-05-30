@@ -33,13 +33,13 @@ function ProfileContent() {
   useEffect(() => {
     if (!childId) return
     const load = async () => {
-      const { data: childData } = await supabase.schema('neuronest').from('children')
+      const { data: childData } = await supabase.from('children')
         .select('*').eq('id', childId).single()
       if (!childData) return
       setChild(childData as Child)
 
       // Check if profile already exists
-      const { data: existingProfile } = await supabase.schema('neuronest').from('child_profiles')
+      const { data: existingProfile } = await supabase.from('child_profiles')
         .select('*').eq('child_id', childId).eq('is_current', true).maybeSingle()
 
       if (existingProfile) {
@@ -57,7 +57,7 @@ function ProfileContent() {
 
   const generateProfile = async (childData: Child) => {
     setGenerating(true)
-    const { data: session } = await supabase.schema('neuronest').from('intake_sessions')
+    const { data: session } = await supabase.from('intake_sessions')
       .select('*').eq('id', sessionId).maybeSingle()
 
     const childContext = buildChildContext({
@@ -80,7 +80,7 @@ function ProfileContent() {
 
     // Save to DB
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: savedProfile } = await supabase.schema('neuronest').from('child_profiles').insert({
+    const { data: savedProfile } = await supabase.from('child_profiles').insert({
       child_id: childId,
       user_id: user!.id,
       version: 1,
@@ -135,10 +135,10 @@ function ProfileContent() {
 
   const proceedToPlan = async () => {
     setSaving(true)
-    await supabase.schema('neuronest').from('child_profiles')
+    await supabase.from('child_profiles')
       .update({ parent_confirmed: true, confirmed_at: new Date().toISOString() })
       .eq('id', profileId)
-    await supabase.schema('neuronest').from('app_state')
+    await supabase.from('app_state')
       .update({ profile_confirmed: true, current_phase: 'plan_generation', updated_at: new Date().toISOString() })
       .eq('child_id', childId)
     router.push(`/onboarding/plan?child=${childId}&profile=${profileId}`)

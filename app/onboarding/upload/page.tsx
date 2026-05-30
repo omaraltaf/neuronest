@@ -56,7 +56,7 @@ function UploadContent() {
           .getPublicUrl(filePath).data.publicUrl
 
         // Save document record
-        await supabase.schema('neuronest').from('documents').insert({
+        await supabase.from('documents').insert({
           child_id: childId,
           user_id: user.id,
           file_name: item.name,

@@ -42,7 +42,6 @@ export default function ChildSetupPage() {
     if (!user) { router.push('/login'); return }
 
     const { data: child, error: childErr } = await supabase
-      .schema('neuronest')
       .from('children')
       .insert({
         user_id: user.id,
@@ -66,7 +65,7 @@ export default function ChildSetupPage() {
     }
 
     // Create initial app_state
-    await supabase.schema('neuronest').from('app_state').insert({
+    await supabase.from('app_state').insert({
       child_id: child.id,
       user_id: user.id,
       current_phase: 'intake',
