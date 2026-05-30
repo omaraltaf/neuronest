@@ -54,6 +54,21 @@ function PlanContent() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
+  // Persist plan chat to DB
+  const persistPlanChat = async (msgs: ChatMessage[], currentPlan?: PlanData | null) => {
+    if (!childId) return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('agent_state').upsert({
+      child_id: childId,
+      user_id: user.id,
+      agent_type: 'planning',
+      messages: msgs,
+      state_data: currentPlan ? { planData: currentPlan } : {},
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'child_id,agent_type' })
+  }
+
   useEffect(() => {
     if (!childId || !profileId) return
     const load = async () => {
@@ -63,6 +78,28 @@ function PlanContent() {
       ])
       if (childData) setChild(childData as Child)
       if (profileData) setProfile(profileData as ChildProfile)
+
+      // Check for existing plan + persisted chat
+      const [{ data: existingPlan }, { data: savedState }] = await Promise.all([
+        supabase.from('plans').select('*').eq('child_id', childId).eq('is_current', true).maybeSingle(),
+        supabase.from('agent_state').select('*').eq('child_id', childId).eq('agent_type', 'planning').maybeSingle(),
+      ])
+
+      if (existingPlan) {
+        setPlanId(existingPlan.id)
+        setPlanData(existingPlan.plan_data as PlanData)
+        if (existingPlan.parent_approved) setApproved(true)
+      }
+
+      if (savedState?.messages && Array.isArray(savedState.messages) && savedState.messages.length > 0) {
+        setMessages(savedState.messages as ChatMessage[])
+        if (savedState.state_data && (savedState.state_data as Record<string, unknown>).planData) {
+          setPlanData((savedState.state_data as Record<string, PlanData>).planData)
+        }
+        return // Chat already exists — don't regenerate
+      }
+
+      // No existing chat — generate fresh
       if (childData && profileData) generatePlan(childData as Child, profileData as ChildProfile)
     }
     load()
@@ -98,7 +135,9 @@ function PlanContent() {
     if (savedPlan) setPlanId(savedPlan.id)
     setPlanData(plan as PlanData)
     const aiMsg: ChatMessage = { role: 'assistant', content: message, timestamp: new Date().toISOString() }
-    setMessages([aiMsg])
+    const initMessages = [aiMsg]
+    setMessages(initMessages)
+    await persistPlanChat(initMessages, plan as PlanData)
     setGenerating(false)
   }
 
@@ -123,9 +162,12 @@ function PlanContent() {
     const { plan: updatedPlan, message, planApproved } = await res.json()
 
     const aiMsg: ChatMessage = { role: 'assistant', content: message, timestamp: new Date().toISOString() }
-    setMessages(prev => [...prev, aiMsg])
-    if (updatedPlan) setPlanData(updatedPlan as PlanData)
+    const updatedMessages = [...newMessages, aiMsg]
+    setMessages(updatedMessages)
+    const finalPlan = updatedPlan ? updatedPlan as PlanData : planData
+    if (updatedPlan) setPlanData(finalPlan)
     if (planApproved) setApproved(true)
+    await persistPlanChat(updatedMessages, finalPlan)
     setLoading(false)
   }
 

@@ -56,14 +56,36 @@ function UploadContent() {
           .getPublicUrl(filePath).data.publicUrl
 
         // Save document record
-        await supabase.from('documents').insert({
+        const { data: docRecord } = await supabase.from('documents').insert({
           child_id: childId,
           user_id: user.id,
           file_name: item.name,
           file_url: fileUrl,
           doc_type: item.doc_type,
-          processing_status: 'pending',
-        })
+          processing_status: 'processing',
+        }).select().single()
+
+        // Trigger extraction in background
+        if (docRecord) {
+          fetch('/api/extract-document', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              documentUrl: fileUrl,
+              fileName: item.name,
+              childName: '',
+            }),
+          }).then(async r => {
+            const { extracted } = await r.json()
+            await supabase.from('documents').update({
+              extracted_data: extracted,
+              processing_status: 'complete',
+              processed_at: new Date().toISOString(),
+            }).eq('id', docRecord.id)
+          }).catch(() => {
+            supabase.from('documents').update({ processing_status: 'failed' }).eq('id', docRecord.id)
+          })
+        }
 
         setFiles(prev => prev.map(f =>
           f.name === item.name ? { ...f, status: 'done' } : f

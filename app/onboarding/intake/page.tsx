@@ -124,13 +124,27 @@ function IntakeContent() {
       if (!newSession) return
       setSessionId(newSession.id)
 
-      // Load documents for context
+      // Load documents with extracted data
       const { data: docs } = await supabase.from('documents')
         .select('file_name, doc_type, extracted_data').eq('child_id', childId)
 
-      const docContext = docs?.length
-        ? `\n\nThe parent has uploaded ${docs.length} document(s): ${docs.map(d => d.file_name + (d.doc_type ? ` (${d.doc_type})` : '')).join(', ')}. Acknowledge these and note that you've noted them.`
-        : ''
+      let docContext = ''
+      if (docs?.length) {
+        const docSummaries = docs.map((d: { file_name: string; doc_type: string | null; extracted_data: Record<string, unknown> | null }) => {
+          const base = d.file_name + (d.doc_type ? ` (${d.doc_type})` : '')
+          if (d.extracted_data && Object.keys(d.extracted_data).length > 0) {
+            const e = d.extracted_data
+            const parts = [
+              e.diagnosis ? `Diagnosis: ${e.diagnosis}` : null,
+              e.key_findings ? `Key findings: ${e.key_findings}` : null,
+              e.communication_summary ? `Communication: ${e.communication_summary}` : null,
+            ].filter(Boolean).join('. ')
+            return base + (parts ? ` — ${parts}` : '')
+          }
+          return base
+        }).join('\n')
+        docContext = `\n\nThe parent has uploaded ${docs.length} document(s) which I have reviewed:\n${docSummaries}\n\nAcknowledge what you found. Skip questions already answered by these documents.`
+      }
 
       // Generate opening message from Intake Agent
       const openingPrompt = buildChildContext({ child: childData as Record<string, unknown> })
