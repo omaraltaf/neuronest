@@ -55,12 +55,12 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
 
   const totalGoals = goals.length
   const inProgress = goals.filter(g => g.status === 'in_progress').length
-  const byArea = goals.reduce((acc, g) => {
-    const area = g.area as string
-    if (!acc[area]) acc[area] = []
-    acc[area].push(g)
-    return acc
-  }, {} as Record<string, Record<string, unknown>[]>)
+  const byArea: Record<string, Record<string, unknown>[]> = {}
+  for (const g of goals) {
+    const area = (g.area as string) || 'other'
+    if (!byArea[area]) byArea[area] = []
+    byArea[area].push(g)
+  }
 
   const signOut = async () => {
     await supabase.auth.signOut()
