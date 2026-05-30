@@ -458,7 +458,10 @@ function ProfileContent() {
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-sm text-gray-900 mb-1">{section.title}</div>
                 <div className="text-xs text-gray-500 leading-relaxed line-clamp-2">
-                  {section.content.split('\n')[0]}
+                  {section.confirmed
+                    ? <span className="text-emerald-600">Tap &ldquo;View chat&rdquo; to review or continue discussion</span>
+                    : section.content.split('\n')[0]
+                  }
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
@@ -488,20 +491,16 @@ function ProfileContent() {
               </div>
             </div>
 
-            {/* Content — clipped preview when unconfirmed, fully scrollable when confirmed */}
-            <div className="px-5 pb-4">
-              {section.confirmed ? (
+            {/* Full content — only shown when confirmed */}
+            {section.confirmed && (
+              <div className="px-5 pb-4">
                 <div
                   className="text-xs text-gray-600 leading-relaxed bg-emerald-50 rounded-xl p-3 whitespace-pre-wrap overflow-y-auto"
-                  style={{ maxHeight: 260 }}>
+                  style={{ maxHeight: 280 }}>
                   {section.content}
                 </div>
-              ) : (
-                <div className="text-xs text-gray-400 leading-relaxed bg-gray-50 rounded-xl p-3 line-clamp-2">
-                  {section.content.split('\n')[0]}
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         ))}
 
