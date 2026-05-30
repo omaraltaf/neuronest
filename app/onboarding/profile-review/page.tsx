@@ -66,6 +66,7 @@ function formatSection(key: string, value: unknown): string {
 function SectionChat({
   section,
   child,
+  childId,
   allSections,
   onUpdateContent,
   onConfirm,
@@ -74,12 +75,14 @@ function SectionChat({
 }: {
   section: ProfileSection
   child: Child | null
+  childId: string
   allSections: ProfileSection[]
   onUpdateContent: (key: string, newContent: string, messages: ChatMessage[]) => void
   onConfirm: (key: string) => void
   onUnconfirm: (key: string) => void
   onClose: () => void
 }) {
+  const supabase = createClient()
   const [messages, setMessages] = useState<ChatMessage[]>(
     section.chatMessages.length > 0
       ? section.chatMessages
@@ -92,6 +95,47 @@ function SectionChat({
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Load persisted chat from DB on mount
+  useEffect(() => {
+    if (!childId || section.chatMessages.length > 0) return
+    const load = async () => {
+      const { data } = await supabase
+        .from('agent_state')
+        .select('messages, state_data')
+        .eq('child_id', childId)
+        .eq('agent_type', `profile-review-${section.key}`)
+        .maybeSingle()
+      if (data?.messages && Array.isArray(data.messages) && data.messages.length > 0) {
+        setMessages(data.messages as ChatMessage[])
+        // Also restore updated content if saved
+        if (data.state_data && (data.state_data as Record<string, unknown>).updatedContent) {
+          onUpdateContent(
+            section.key,
+            (data.state_data as Record<string, string>).updatedContent,
+            data.messages as ChatMessage[]
+          )
+        }
+      }
+    }
+    load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childId, section.key])
+
+  // Persist chat to DB after every message exchange
+  const persistChat = async (msgs: ChatMessage[], updatedContent?: string) => {
+    if (!childId) return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('agent_state').upsert({
+      child_id: childId,
+      user_id: user.id,
+      agent_type: `profile-review-${section.key}`,
+      messages: msgs,
+      state_data: updatedContent ? { updatedContent } : {},
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'child_id,agent_type' })
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -123,6 +167,9 @@ function SectionChat({
       const aiMsg: ChatMessage = { role: 'assistant', content: text, timestamp: new Date().toISOString() }
       const finalMessages = [...newMessages, aiMsg]
       setMessages(finalMessages)
+
+      // Persist chat to DB immediately after every exchange
+      await persistChat(finalMessages, updatedContent || undefined)
 
       // If agent revised the section content, update it
       if (updatedContent) {
@@ -471,6 +518,7 @@ function ProfileContent() {
         <SectionChat
           section={activeSection}
           child={child}
+          childId={childId}
           allSections={sections}
           onUpdateContent={handleUpdateContent}
           onConfirm={handleConfirm}
