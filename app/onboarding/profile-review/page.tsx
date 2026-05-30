@@ -289,10 +289,23 @@ function ProfileContent() {
   const [child, setChild] = useState<Child | null>(null)
   const [generating, setGenerating] = useState(false)
   const [profileId, setProfileId] = useState<string | null>(null)
+  const [profileData, setProfileData] = useState<Record<string, unknown> | null>(null)
   const [sections, setSections] = useState<ProfileSection[]>([])
   const [activeChatKey, setActiveChatKey] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [allConfirmed, setAllConfirmed] = useState(false)
+
+  // Document enrichment state
+  const [enrichmentPhase, setEnrichmentPhase] = useState<'checking' | 'enriching' | 'done'>('checking')
+  const [enrichmentMessages, setEnrichmentMessages] = useState<ChatMessage[]>([])
+  const [enrichmentInput, setEnrichmentInput] = useState('')
+  const [enrichmentLoading, setEnrichmentLoading] = useState(false)
+  const [enrichmentComplete, setEnrichmentComplete] = useState(false)
+  const enrichmentBottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    enrichmentBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [enrichmentMessages])
 
   useEffect(() => {
     if (!childId) return
@@ -304,16 +317,200 @@ function ProfileContent() {
       const { data: existingProfile } = await supabase.from('child_profiles')
         .select('*').eq('child_id', childId).eq('is_current', true).maybeSingle()
 
-      if (existingProfile) {
-        setProfileId(existingProfile.id)
-        buildSections(existingProfile.profile_data, childData.name)
+      const profileToUse = existingProfile
+      if (!profileToUse) {
+        generateProfile(childData as Child)
         return
       }
-      generateProfile(childData as Child)
+
+      setProfileId(profileToUse.id)
+      setProfileData(profileToUse.profile_data)
+
+      // Check for unprocessed documents (uploaded but not yet compared against profile)
+      const { data: docs } = await supabase.from('documents')
+        .select('*').eq('child_id', childId).eq('processing_status', 'complete')
+
+      // Check if enrichment already done for these docs
+      const { data: enrichmentState } = await supabase.from('agent_state')
+        .select('*').eq('child_id', childId).eq('agent_type', 'doc-enrichment-complete').maybeSingle()
+
+      const docsNeedEnrichment = docs && docs.length > 0 && !enrichmentState
+
+      if (docsNeedEnrichment) {
+        // Run enrichment before showing profile sections
+        setEnrichmentPhase('enriching')
+        await runDocumentEnrichment(docs, profileToUse, childData)
+      } else {
+        setEnrichmentPhase('done')
+        buildSections(profileToUse.profile_data, childData.name)
+      }
     }
     load()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childId])
+
+  const runDocumentEnrichment = async (
+    docs: Record<string, unknown>[],
+    profile: Record<string, unknown>,
+    childData: Record<string, unknown>
+  ) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    // Combine all extracted doc data
+    const allExtracted = docs.map((d: Record<string, unknown>) => ({
+      file_name: d.file_name,
+      doc_type: d.doc_type,
+      ...(d.extracted_data as Record<string, unknown> || {}),
+    }))
+
+    // Compare against existing profile
+    const compareRes = await fetch('/api/enrich-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'compare',
+        existingProfile: profile.profile_data,
+        extractedDocData: allExtracted,
+        childName: childData.name,
+      }),
+    })
+    const { comparison } = await compareRes.json()
+
+    if (!comparison) {
+      // Comparison failed — skip to profile
+      setEnrichmentPhase('done')
+      buildSections((profile.profile_data as Record<string, unknown>), childData.name as string)
+      return
+    }
+
+    const hasQuestions = comparison.clarification_questions?.length > 0
+    const hasUpdates = comparison.profile_updates &&
+      Object.values(comparison.profile_updates).some(v => v !== null)
+
+    // Apply profile updates that don't need clarification
+    if (hasUpdates) {
+      const updatedData = { ...(profile.profile_data as Record<string, unknown>) }
+      Object.entries(comparison.profile_updates).forEach(([key, val]) => {
+        if (val !== null && val !== undefined) updatedData[key] = val
+      })
+
+      // Create new profile version
+      await supabase.from('child_profiles').update({ is_current: false }).eq('id', profile.id)
+      const { data: newProfile } = await supabase.from('child_profiles').insert({
+        child_id: childId,
+        user_id: user.id,
+        version: ((profile.version as number) || 1) + 1,
+        profile_data: updatedData,
+        is_current: true,
+        parent_confirmed: false,
+      }).select().single()
+
+      if (newProfile) {
+        setProfileId(newProfile.id)
+        setProfileData(updatedData)
+      }
+    }
+
+    if (hasQuestions) {
+      // Start clarification chat
+      const openingMsg: ChatMessage = {
+        role: 'assistant',
+        content: `I've reviewed the ${docs.length} document${docs.length > 1 ? 's' : ''} you uploaded — the ASQ-3, the IOP, and the Sakkyndig vurdering.
+
+${comparison.summary_for_parent}
+
+I have ${comparison.clarification_questions.length} follow-up question${comparison.clarification_questions.length > 1 ? 's' : ''} based on what the documents revealed that wasn't covered in our interview. I'll ask them one at a time — this won't take long.
+
+${comparison.clarification_questions[0]}`,
+        timestamp: new Date().toISOString(),
+      }
+      setEnrichmentMessages([openingMsg])
+
+      // Persist
+      await supabase.from('agent_state').upsert({
+        child_id: childId, user_id: user.id,
+        agent_type: 'doc-enrichment-latest',
+        messages: [openingMsg],
+        state_data: { comparison },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'child_id,agent_type' })
+    } else {
+      // No questions needed — mark enrichment done and show profile
+      await supabase.from('agent_state').upsert({
+        child_id: childId, user_id: user.id,
+        agent_type: 'doc-enrichment-complete',
+        messages: [],
+        state_data: { completedAt: new Date().toISOString() },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'child_id,agent_type' })
+      setEnrichmentComplete(true)
+      setEnrichmentPhase('done')
+      const currentProfile = await supabase.from('child_profiles')
+        .select('*').eq('child_id', childId).eq('is_current', true).maybeSingle()
+      if (currentProfile.data) {
+        buildSections(currentProfile.data.profile_data, childData.name as string)
+      }
+    }
+  }
+
+  const sendEnrichmentMessage = async (comparison: Record<string, unknown>) => {
+    if (!enrichmentInput.trim() || enrichmentLoading) return
+    const userMsg: ChatMessage = { role: 'user', content: enrichmentInput.trim(), timestamp: new Date().toISOString() }
+    const newMessages = [...enrichmentMessages, userMsg]
+    setEnrichmentMessages(newMessages)
+    setEnrichmentInput('')
+    setEnrichmentLoading(true)
+
+    const res = await fetch('/api/enrich-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'clarify',
+        messages: newMessages,
+        clarificationQuestions: (comparison as Record<string, unknown[]>).clarification_questions || [],
+        comparisonSummary: (comparison as Record<string, string>).summary_for_parent || '',
+      }),
+    })
+    const { text, clarificationComplete } = await res.json()
+    const aiMsg: ChatMessage = { role: 'assistant', content: text, timestamp: new Date().toISOString() }
+    const finalMessages = [...newMessages, aiMsg]
+    setEnrichmentMessages(finalMessages)
+    setEnrichmentLoading(false)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.from('agent_state').upsert({
+        child_id: childId, user_id: user.id,
+        agent_type: 'doc-enrichment-latest',
+        messages: finalMessages,
+        state_data: { comparison },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'child_id,agent_type' })
+    }
+
+    if (clarificationComplete) {
+      setEnrichmentComplete(true)
+    }
+  }
+
+  const finishEnrichment = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('agent_state').upsert({
+      child_id: childId, user_id: user.id,
+      agent_type: 'doc-enrichment-complete',
+      messages: [],
+      state_data: { completedAt: new Date().toISOString() },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'child_id,agent_type' })
+    setEnrichmentPhase('done')
+    const currentProfile = await supabase.from('child_profiles')
+      .select('*').eq('child_id', childId).eq('is_current', true).maybeSingle()
+    if (currentProfile.data) {
+      buildSections(currentProfile.data.profile_data, child?.name || '')
+    }
+  }
 
   const buildSections = (profile: Record<string, unknown>, name?: string) => {
     const childName = name || child?.name || 'Your child'
@@ -413,6 +610,83 @@ function ProfileContent() {
   }
 
   const activeSection = sections.find(s => s.key === activeChatKey)
+
+  // Enrichment phase — show before profile sections
+  if (enrichmentPhase === 'enriching') {
+    const storedComparison = {} as Record<string, unknown> // comparison is in enrichmentMessages state_data
+    return (
+      <div className="space-y-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-2xl">📄</span>
+            <div>
+              <h1 className="text-lg font-black text-gray-900">Reviewing your documents</h1>
+              <p className="text-xs text-gray-400">Dr. Sarah Chen is comparing your documents against the interview</p>
+            </div>
+          </div>
+          {enrichmentMessages.length === 0 && (
+            <div className="flex items-center gap-3 bg-violet-50 rounded-xl p-4">
+              <div className="flex gap-1"><div className="typing-dot"/><div className="typing-dot"/><div className="typing-dot"/></div>
+              <span className="text-sm text-violet-700">Reading the ASQ-3, IOP, and Sakkyndig vurdering…</span>
+            </div>
+          )}
+        </div>
+
+        {enrichmentMessages.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">👩‍⚕️</div>
+              <div>
+                <div className="text-sm font-bold text-gray-900">Dr. Sarah Chen</div>
+                <div className="text-[10px] text-gray-400">Follow-up questions from your documents</div>
+              </div>
+            </div>
+            <div className="px-4 py-4 space-y-3 max-h-96 overflow-y-auto">
+              {enrichmentMessages.map((msg, i) => (
+                <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {msg.role === 'assistant' && (
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-xs flex-shrink-0 mt-1">👩‍⚕️</div>
+                  )}
+                  <div className={msg.role === 'user' ? 'chat-user' : 'chat-ai'} style={{ whiteSpace: 'pre-wrap' }}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {enrichmentLoading && (
+                <div className="flex gap-2">
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-xs">👩‍⚕️</div>
+                  <div className="chat-ai flex items-center gap-1.5 py-3">
+                    <div className="typing-dot"/><div className="typing-dot"/><div className="typing-dot"/>
+                  </div>
+                </div>
+              )}
+              <div ref={enrichmentBottomRef} />
+            </div>
+            <div className="px-4 py-3 border-t border-gray-50 space-y-2">
+              {!enrichmentComplete ? (
+                <div className="flex gap-2">
+                  <textarea value={enrichmentInput} onChange={e => setEnrichmentInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendEnrichmentMessage(storedComparison) } }}
+                    placeholder="Answer Dr. Chen's question…" rows={2}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-violet-400 transition" />
+                  <button onClick={() => sendEnrichmentMessage(storedComparison)}
+                    disabled={enrichmentLoading || !enrichmentInput.trim()}
+                    className="px-4 self-end py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-bold rounded-xl text-sm transition">
+                    Send
+                  </button>
+                </div>
+              ) : (
+                <button onClick={finishEnrichment}
+                  className="w-full py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-black rounded-xl text-sm transition">
+                  Continue to profile review →
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   if (generating) {
     return (
