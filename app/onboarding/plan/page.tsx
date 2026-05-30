@@ -10,6 +10,29 @@ const AREA_COLORS: Record<string, string> = {
   motor: '#16A34A', cognition: '#0891B2', behaviour: '#D97706', school: '#DB2777',
 }
 
+interface PlanGoal {
+  id?: string
+  area?: string
+  label?: string
+  rationale?: string
+  timeline_weeks?: number
+  root_cause_addressed?: string
+  approach?: string
+  baseline?: string
+  target_criterion?: string
+  evidence_base?: string
+  activities?: unknown[]
+  generalisation_plan?: string
+  dependencies?: string[]
+}
+
+interface PlanData {
+  overview?: string
+  phases?: unknown[]
+  goals?: PlanGoal[]
+  parent_priorities_addressed?: string[]
+}
+
 function PlanContent() {
   const router = useRouter()
   const params = useSearchParams()
@@ -21,7 +44,7 @@ function PlanContent() {
   const [profile, setProfile] = useState<ChildProfile | null>(null)
   const [generating, setGenerating] = useState(false)
   const [planId, setPlanId] = useState<string | null>(null)
-  const [planData, setPlanData] = useState<Record<string, unknown> | null>(null)
+  const [planData, setPlanData] = useState<PlanData | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -40,8 +63,6 @@ function PlanContent() {
       ])
       if (childData) setChild(childData as Child)
       if (profileData) setProfile(profileData as ChildProfile)
-
-      // Generate initial plan
       if (childData && profileData) generatePlan(childData as Child, profileData as ChildProfile)
     }
     load()
@@ -58,16 +79,10 @@ function PlanContent() {
     const res = await fetch('/api/planning', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        childContext,
-        childName: childData.name,
-        action: 'generate',
-        messages: [],
-      }),
+      body: JSON.stringify({ childContext, childName: childData.name, action: 'generate', messages: [] }),
     })
     const { plan, message } = await res.json()
 
-    // Save to DB
     const { data: { user } } = await supabase.auth.getUser()
     const { data: savedPlan } = await supabase.schema('neuronest').from('plans').insert({
       child_id: childId,
@@ -81,8 +96,7 @@ function PlanContent() {
     }).select().single()
 
     if (savedPlan) setPlanId(savedPlan.id)
-    setPlanData(plan)
-
+    setPlanData(plan as PlanData)
     const aiMsg: ChatMessage = { role: 'assistant', content: message, timestamp: new Date().toISOString() }
     setMessages([aiMsg])
     setGenerating(false)
@@ -104,19 +118,13 @@ function PlanContent() {
     const res = await fetch('/api/planning', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        childContext,
-        childName: child?.name,
-        action: 'feedback',
-        messages: newMessages,
-        currentPlan: planData,
-      }),
+      body: JSON.stringify({ childContext, childName: child?.name, action: 'feedback', messages: newMessages, currentPlan: planData }),
     })
     const { plan: updatedPlan, message, planApproved } = await res.json()
 
     const aiMsg: ChatMessage = { role: 'assistant', content: message, timestamp: new Date().toISOString() }
     setMessages(prev => [...prev, aiMsg])
-    if (updatedPlan) setPlanData(updatedPlan)
+    if (updatedPlan) setPlanData(updatedPlan as PlanData)
     if (planApproved) setApproved(true)
     setLoading(false)
   }
@@ -125,14 +133,13 @@ function PlanContent() {
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Save goals to DB
     if (planData?.goals && Array.isArray(planData.goals)) {
-      const goals = planData.goals.map((g: Record<string, unknown>) => ({
+      const goals = planData.goals.map((g: PlanGoal) => ({
         plan_id: planId,
         child_id: childId,
         user_id: user!.id,
         area: g.area || 'general',
-        label: g.label || g.id,
+        label: g.label || g.id || 'Goal',
         rationale: g.rationale || null,
         root_cause_addressed: g.root_cause_addressed || null,
         approach: g.approach || null,
@@ -155,7 +162,6 @@ function PlanContent() {
         .update({ plan_approved: true, current_phase: 'active', updated_at: new Date().toISOString() })
         .eq('child_id', childId),
     ])
-
     router.push('/dashboard')
   }
 
@@ -176,25 +182,31 @@ function PlanContent() {
 
   return (
     <div className="space-y-4">
-      {/* Plan overview */}
       {planData && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <h1 className="text-xl font-black text-gray-900 mb-1">{child?.name}&apos;s Intervention Plan</h1>
-          <p className="text-sm text-gray-500 mb-4">{planData.overview as string}</p>
+          {planData.overview && (
+            <p className="text-sm text-gray-500 mb-4">{planData.overview}</p>
+          )}
 
-          {/* Goals by area */}
-          {planData.goals && Array.isArray(planData.goals) && (
+          {planData.goals && Array.isArray(planData.goals) && planData.goals.length > 0 && (
             <div className="space-y-2">
-              <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Goals ({(planData.goals as unknown[]).length})</div>
-              {(planData.goals as Record<string, unknown>[]).map((goal, i) => {
-                const color = AREA_COLORS[goal.area as string] || '#7C3AED'
+              <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                Goals ({planData.goals.length})
+              </div>
+              {planData.goals.map((goal: PlanGoal, i: number) => {
+                const color = AREA_COLORS[goal.area || ''] || '#7C3AED'
                 return (
                   <div key={i} className="flex items-start gap-3 bg-gray-50 rounded-xl px-3 py-3">
                     <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: color }} />
                     <div className="flex-1">
-                      <div className="text-sm font-bold text-gray-900">{goal.label as string}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{goal.area as string} · {goal.timeline_weeks as number} weeks</div>
-                      {goal.rationale && <div className="text-xs text-gray-600 mt-1 leading-relaxed">{goal.rationale as string}</div>}
+                      <div className="text-sm font-bold text-gray-900">{goal.label || 'Goal'}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {goal.area} {goal.timeline_weeks ? `· ${goal.timeline_weeks} weeks` : ''}
+                      </div>
+                      {goal.rationale && (
+                        <div className="text-xs text-gray-600 mt-1 leading-relaxed">{goal.rationale}</div>
+                      )}
                     </div>
                   </div>
                 )
@@ -204,7 +216,6 @@ function PlanContent() {
         </div>
       )}
 
-      {/* Feedback loop chat */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">👩‍💼</div>
@@ -247,7 +258,7 @@ function PlanContent() {
                 <input value={input} onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && sendFeedback()}
                   placeholder="Does this plan address your main concerns? What's missing?"
-                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition" />
+                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-violet-400 transition" />
                 <button onClick={sendFeedback} disabled={loading || !input.trim()}
                   className="px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-bold rounded-xl text-sm transition">
                   Send

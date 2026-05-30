@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
@@ -10,7 +10,7 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
@@ -24,7 +24,6 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const path = request.nextUrl.pathname
 
-  // Public paths
   const publicPaths = ['/login', '/signup', '/auth/callback']
   if (publicPaths.some(p => path.startsWith(p))) {
     if (user) {
@@ -35,7 +34,6 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Require auth for everything else
   if (!user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
