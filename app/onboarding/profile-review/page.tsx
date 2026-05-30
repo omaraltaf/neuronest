@@ -69,6 +69,7 @@ function SectionChat({
   allSections,
   onUpdateContent,
   onConfirm,
+  onUnconfirm,
   onClose,
 }: {
   section: ProfileSection
@@ -76,6 +77,7 @@ function SectionChat({
   allSections: ProfileSection[]
   onUpdateContent: (key: string, newContent: string, messages: ChatMessage[]) => void
   onConfirm: (key: string) => void
+  onUnconfirm: (key: string) => void
   onClose: () => void
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>(
@@ -195,7 +197,7 @@ function SectionChat({
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-              placeholder="Tell Dr. Chen what's wrong or missing…"
+              placeholder={section.confirmed ? "Continue the conversation…" : "Tell Dr. Chen what\'s wrong or missing…"}
               rows={2}
               className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition"
             />
@@ -204,11 +206,26 @@ function SectionChat({
               Send
             </button>
           </div>
-          <button
-            onClick={() => { onConfirm(section.key); onClose() }}
-            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition">
-            ✓ Confirm this section and continue
-          </button>
+          {section.confirmed ? (
+            <div className="flex gap-2">
+              <button
+                onClick={onClose}
+                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition">
+                Close
+              </button>
+              <button
+                onClick={() => { onUnconfirm(section.key); }}
+                className="py-2 px-3 border border-amber-200 text-amber-600 hover:bg-amber-50 font-medium rounded-xl text-sm transition">
+                Revise
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { onConfirm(section.key); onClose() }}
+              className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition">
+              ✓ Confirm this section and continue
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -283,12 +300,16 @@ function ProfileContent() {
     setSections(prev => {
       const updated = prev.map(s => s.key === key ? { ...s, confirmed: true } : s)
       setAllConfirmed(updated.every(s => s.confirmed))
-      // Auto-open next unconfirmed section chat
       const idx = updated.findIndex(s => s.key === key)
       const next = updated.slice(idx + 1).find(s => !s.confirmed)
       if (next) setTimeout(() => setActiveChatKey(next.key), 300)
       return updated
     })
+  }
+
+  const handleUnconfirm = (key: string) => {
+    setSections(prev => prev.map(s => s.key === key ? { ...s, confirmed: false } : s))
+    setAllConfirmed(false)
   }
 
   const generateProfile = async (childData: Child) => {
@@ -395,9 +416,16 @@ function ProfileContent() {
               </div>
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
                 {section.confirmed ? (
-                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
-                    ✓ Confirmed
-                  </span>
+                  <>
+                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                      ✓ Confirmed
+                    </span>
+                    <button
+                      onClick={() => setActiveChatKey(section.key)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full border border-violet-200 bg-violet-50 text-violet-600 hover:bg-violet-100 transition">
+                      💬 {section.chatMessages.length > 0 ? 'View chat' : 'Open chat'}
+                    </button>
+                  </>
                 ) : (
                   <button
                     onClick={() => setActiveChatKey(section.key)}
@@ -408,12 +436,6 @@ function ProfileContent() {
                       color: section.chatMessages.length > 0 ? '#7C3AED' : '#6B7280',
                     }}>
                     {section.chatMessages.length > 0 ? '💬 Continue chat' : '💬 Discuss'}
-                  </button>
-                )}
-                {section.confirmed && section.chatMessages.length > 0 && (
-                  <button onClick={() => setActiveChatKey(section.key)}
-                    className="text-[10px] text-gray-400 hover:text-violet-600 transition">
-                    View chat
                   </button>
                 )}
               </div>
@@ -452,6 +474,7 @@ function ProfileContent() {
           allSections={sections}
           onUpdateContent={handleUpdateContent}
           onConfirm={handleConfirm}
+          onUnconfirm={handleUnconfirm}
           onClose={() => setActiveChatKey(null)}
         />
       )}
