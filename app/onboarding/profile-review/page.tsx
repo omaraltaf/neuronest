@@ -301,6 +301,7 @@ function ProfileContent() {
   const [enrichmentInput, setEnrichmentInput] = useState('')
   const [enrichmentLoading, setEnrichmentLoading] = useState(false)
   const [enrichmentComplete, setEnrichmentComplete] = useState(false)
+  const [enrichmentComparison, setEnrichmentComparison] = useState<Record<string, unknown> | null>(null)
   const enrichmentBottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -377,6 +378,8 @@ function ProfileContent() {
     })
     const { comparison } = await compareRes.json()
 
+    if (comparison) setEnrichmentComparison(comparison)
+
     if (!comparison) {
       // Comparison failed — skip to profile
       setEnrichmentPhase('done')
@@ -413,16 +416,35 @@ function ProfileContent() {
     }
 
     if (hasQuestions) {
-      // Start clarification chat
+      // Build a clear summary of what was extracted from each document
+      const docSummaryLines = docs.map((d: Record<string, unknown>) => {
+        const e = d.extracted_data as Record<string, unknown> || {}
+        const lines: string[] = [`📄 **${d.file_name}** (${d.doc_type || 'document'})`]
+        if (e.diagnosis)              lines.push(`  • Diagnosis: ${e.diagnosis}`)
+        if (e.diagnosis_level)        lines.push(`  • Level: ${e.diagnosis_level}`)
+        if (e.assessment_date)        lines.push(`  • Assessment date: ${e.assessment_date}`)
+        if (e.assessor)               lines.push(`  • Assessor: ${e.assessor}`)
+        if (e.communication_summary)  lines.push(`  • Communication: ${e.communication_summary}`)
+        if (e.social_summary)         lines.push(`  • Social: ${e.social_summary}`)
+        if (e.sensory_summary)        lines.push(`  • Sensory: ${e.sensory_summary}`)
+        if (e.behaviour_summary)      lines.push(`  • Behaviour: ${e.behaviour_summary}`)
+        if (e.motor_summary)          lines.push(`  • Motor: ${e.motor_summary}`)
+        if (e.cognitive_summary)      lines.push(`  • Cognition: ${e.cognitive_summary}`)
+        if (e.key_findings)           lines.push(`  • Key findings: ${e.key_findings}`)
+        if (e.current_support && Array.isArray(e.current_support) && e.current_support.length)
+          lines.push(`  • Current support: ${(e.current_support as string[]).join(', ')}`)
+        if (e.recommendations && Array.isArray(e.recommendations) && e.recommendations.length)
+          lines.push(`  • Recommendations: ${(e.recommendations as string[]).slice(0,3).join('; ')}`)
+        if (e.strengths && Array.isArray(e.strengths) && e.strengths.length)
+          lines.push(`  • Strengths noted: ${(e.strengths as string[]).join(', ')}`)
+        if (e.medical_notes)          lines.push(`  • Medical notes: ${e.medical_notes}`)
+        return lines.join('\n')
+      }).join('\n\n')
+
+      // Start clarification chat with document summary first
       const openingMsg: ChatMessage = {
         role: 'assistant',
-        content: `I've reviewed the ${docs.length} document${docs.length > 1 ? 's' : ''} you uploaded — the ASQ-3, the IOP, and the Sakkyndig vurdering.
-
-${comparison.summary_for_parent}
-
-I have ${comparison.clarification_questions.length} follow-up question${comparison.clarification_questions.length > 1 ? 's' : ''} based on what the documents revealed that wasn't covered in our interview. I'll ask them one at a time — this won't take long.
-
-${comparison.clarification_questions[0]}`,
+        content: `I've finished reading all ${docs.length} document${docs.length > 1 ? 's' : ''} you uploaded. Here is exactly what I captured from each one:\n\n${docSummaryLines}\n\n---\n\n${comparison.summary_for_parent}\n\nI have ${comparison.clarification_questions.length} follow-up question${comparison.clarification_questions.length > 1 ? 's' : ''} based on things the documents mention that weren't fully covered in our interview. I'll take them one at a time.\n\n${comparison.clarification_questions[0]}`,
         timestamp: new Date().toISOString(),
       }
       setEnrichmentMessages([openingMsg])
@@ -436,21 +458,34 @@ ${comparison.clarification_questions[0]}`,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'child_id,agent_type' })
     } else {
-      // No questions needed — mark enrichment done and show profile
+      // No questions needed — show summary then auto-proceed
+      const docSummaryLines = docs.map((d: Record<string, unknown>) => {
+        const e = d.extracted_data as Record<string, unknown> || {}
+        const lines: string[] = [`📄 **${d.file_name}** (${d.doc_type || 'document'})`]
+        if (e.diagnosis)             lines.push(`  • Diagnosis: ${e.diagnosis}`)
+        if (e.key_findings)          lines.push(`  • Key findings: ${e.key_findings}`)
+        if (e.communication_summary) lines.push(`  • Communication: ${e.communication_summary}`)
+        if (e.social_summary)        lines.push(`  • Social: ${e.social_summary}`)
+        if (e.current_support && Array.isArray(e.current_support) && e.current_support.length)
+          lines.push(`  • Current support: ${(e.current_support as string[]).join(', ')}`)
+        return lines.join('\n')
+      }).join('\n\n')
+
+      const summaryMsg: ChatMessage = {
+        role: 'assistant',
+        content: `I've reviewed all ${docs.length} document${docs.length > 1 ? 's' : ''} and here is what I captured:\n\n${docSummaryLines}\n\n---\n\n${comparison.summary_for_parent}\n\nThe documents confirm and strengthen what we covered in our interview — no additional questions needed. The profile has been updated with the new information.`,
+        timestamp: new Date().toISOString(),
+      }
+      setEnrichmentMessages([summaryMsg])
+      setEnrichmentComplete(true)
+
       await supabase.from('agent_state').upsert({
         child_id: childId, user_id: user.id,
         agent_type: 'doc-enrichment-complete',
-        messages: [],
+        messages: [summaryMsg],
         state_data: { completedAt: new Date().toISOString() },
         updated_at: new Date().toISOString(),
       }, { onConflict: 'child_id,agent_type' })
-      setEnrichmentComplete(true)
-      setEnrichmentPhase('done')
-      const currentProfile = await supabase.from('child_profiles')
-        .select('*').eq('child_id', childId).eq('is_current', true).maybeSingle()
-      if (currentProfile.data) {
-        buildSections(currentProfile.data.profile_data, childData.name as string)
-      }
     }
   }
 
@@ -613,7 +648,6 @@ ${comparison.clarification_questions[0]}`,
 
   // Enrichment phase — show before profile sections
   if (enrichmentPhase === 'enriching') {
-    const storedComparison = {} as Record<string, unknown> // comparison is in enrichmentMessages state_data
     return (
       <div className="space-y-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
@@ -666,10 +700,10 @@ ${comparison.clarification_questions[0]}`,
               {!enrichmentComplete ? (
                 <div className="flex gap-2">
                   <textarea value={enrichmentInput} onChange={e => setEnrichmentInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendEnrichmentMessage(storedComparison) } }}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendEnrichmentMessage(enrichmentComparison || {}) } }}
                     placeholder="Answer Dr. Chen's question…" rows={2}
                     className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-violet-400 transition" />
-                  <button onClick={() => sendEnrichmentMessage(storedComparison)}
+                  <button onClick={() => sendEnrichmentMessage(enrichmentComparison || {})}
                     disabled={enrichmentLoading || !enrichmentInput.trim()}
                     className="px-4 self-end py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-bold rounded-xl text-sm transition">
                     Send
