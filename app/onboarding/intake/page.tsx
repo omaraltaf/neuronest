@@ -95,16 +95,31 @@ function IntakeContent() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const [{ data: childData }, { data: existingSession }] = await Promise.all([
-        supabase.from('children').select('*').eq('id', childId).single(),
-        supabase.from('intake_sessions')
-          .select('*').eq('child_id', childId).eq('status', 'in_progress').maybeSingle(),
-      ])
+      // Check app state first — if interview already complete, redirect
+      const { data: appStateData } = await supabase
+        .from('app_state').select('*').eq('child_id', childId).maybeSingle()
+
+      const { data: childData } = await supabase
+        .from('children').select('*').eq('id', childId).single()
 
       if (!childData) { router.push('/dashboard'); return }
       setChild(childData as Child)
 
-      if (existingSession) {
+      if (appStateData?.intake_complete) {
+        const { data: latestSession } = await supabase
+          .from('intake_sessions').select('id').eq('child_id', childId)
+          .order('created_at', { ascending: false }).limit(1).maybeSingle()
+        router.push(`/onboarding/profile-review?child=${childId}&session=${latestSession?.id || ''}`)
+        return
+      }
+
+      // Load any in-progress session with existing messages
+      const { data: existingSession } = await supabase
+        .from('intake_sessions').select('*').eq('child_id', childId)
+        .eq('status', 'in_progress')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle()
+
+      if (existingSession && Array.isArray(existingSession.messages) && existingSession.messages.length > 0) {
         setSessionId(existingSession.id)
         setMessages(existingSession.messages || [])
         setConfidence(existingSession.domain_confidence || confidence)

@@ -168,7 +168,20 @@ function UploadContent() {
 
       {/* Actions */}
       <div className="flex gap-3">
-        <button onClick={() => router.push(`/onboarding/intake?child=${childId}`)}
+        <button onClick={() => async () => {
+            // Check if interview already done — go to profile review instead
+            const supabase = (await import('@/lib/supabase/client')).createClient()
+            const { data: appState } = await supabase
+              .from('app_state').select('intake_complete').eq('child_id', childId).maybeSingle()
+            if (appState?.intake_complete) {
+              const { data: session } = await supabase
+                .from('intake_sessions').select('id').eq('child_id', childId)
+                .order('created_at', { ascending: false }).limit(1).maybeSingle()
+              router.push(`/onboarding/profile-review?child=${childId}&session=${session?.id || ''}`)
+            } else {
+              router.push(`/onboarding/intake?child=${childId}`)
+            }
+          }}
           className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl text-sm transition">
           {files.length > 0 ? 'Continue to interview →' : 'Skip, start interview →'}
         </button>
