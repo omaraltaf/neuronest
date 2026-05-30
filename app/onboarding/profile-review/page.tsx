@@ -97,6 +97,64 @@ function ProfileContent() {
     setGenerating(false)
   }
 
+  const formatSection = (key: string, value: unknown): string => {
+    if (!value) return 'No information available for this section.'
+    if (typeof value === 'string') return value
+
+    // Handle each section type with human-readable formatting
+    const v = value as Record<string, unknown>
+
+    if (key === 'priority_matrix' && Array.isArray(value)) {
+      return (value as Record<string, unknown>[]).map((item, i) =>
+        `${i + 1}. ${item.label || item.area}\n   Why: ${item.rationale || ''}\n   Urgency: ${item.urgency || ''}`
+      ).join('\n\n')
+    }
+
+    if (key === 'strength_map') {
+      const strengths = (v.strengths as Record<string, unknown>[]) || []
+      return strengths.map((s: Record<string, unknown>) =>
+        `• ${s.label}\n  ${s.description}\n  How to use: ${s.leverage}`
+      ).join('\n\n')
+    }
+
+    const parts: string[] = []
+
+    if (v.summary) parts.push(v.summary as string)
+    if (v.current_level) parts.push(`Current level: ${v.current_level}`)
+    if (v.root_cause) parts.push(`Root cause: ${v.root_cause}`)
+    if (v.profile_type) parts.push(`Profile type: ${v.profile_type}`)
+    if (v.cognitive_level) parts.push(`Cognitive level: ${v.cognitive_level}`)
+    if (v.verbal_nonverbal_gap) parts.push(`Verbal/non-verbal gap: ${v.verbal_nonverbal_gap}`)
+    if (v.learning_style) parts.push(`Learning style: ${v.learning_style}`)
+    if (v.echolalia_analysis) parts.push(`Echolalia: ${v.echolalia_analysis}`)
+    if (v.parental_stress_level) parts.push(`Parent stress level: ${v.parental_stress_level}`)
+
+    if (Array.isArray(v.strengths) && v.strengths.length) {
+      parts.push(`Strengths:\n${(v.strengths as string[]).map(s => `  • ${s}`).join('\n')}`)
+    }
+    if (Array.isArray(v.challenges) && v.challenges.length) {
+      parts.push(`Challenges:\n${(v.challenges as string[]).map(s => `  • ${s}`).join('\n')}`)
+    }
+    if (Array.isArray(v.targets) && v.targets.length) {
+      parts.push(`Key targets:\n${(v.targets as string[]).map(s => `  • ${s}`).join('\n')}`)
+    }
+    if (Array.isArray(v.support_factors) && v.support_factors.length) {
+      parts.push(`What helps:\n${(v.support_factors as string[]).map(s => `  • ${s}`).join('\n')}`)
+    }
+    if (Array.isArray(v.complicating_factors) && v.complicating_factors.length) {
+      parts.push(`Complicating factors:\n${(v.complicating_factors as string[]).map(s => `  • ${s}`).join('\n')}`)
+    }
+    if (Array.isArray(v.regulation_strategies) && v.regulation_strategies.length) {
+      parts.push(`Regulation strategies:\n${(v.regulation_strategies as string[]).map(s => `  • ${s}`).join('\n')}`)
+    }
+    if (Array.isArray(v.triggers) && v.triggers.length) {
+      parts.push(`Triggers:\n${(v.triggers as string[]).map(s => `  • ${s}`).join('\n')}`)
+    }
+    if (v.what_works) parts.push(`What works: ${v.what_works}`)
+
+    return parts.length > 0 ? parts.join('\n\n') : JSON.stringify(value, null, 2)
+  }
+
   const buildSections = (profile: Record<string, unknown>) => {
     const sectionDefs = [
       { key: 'snapshot', title: `${child?.name || 'Your child'} — Overview`, icon: '🌟', color: '#7C3AED' },
@@ -106,16 +164,14 @@ function ProfileContent() {
       { key: 'behaviour', title: 'Behaviour & Regulation', icon: '⚖️', color: '#D97706' },
       { key: 'cognition', title: 'Cognitive Profile', icon: '🧩', color: '#0891B2' },
       { key: 'motor', title: 'Motor Profile', icon: '🏃', color: '#16A34A' },
-      { key: 'strengths', title: 'Strength Map', icon: '💪', color: '#059669' },
+      { key: 'strength_map', title: 'Strength Map', icon: '💪', color: '#059669' },
       { key: 'family_context', title: 'Family Context', icon: '🏠', color: '#DB2777' },
       { key: 'priority_matrix', title: 'Priority Areas', icon: '🎯', color: '#E8635A' },
     ]
 
     setSections(sectionDefs.map(def => ({
       ...def,
-      content: typeof profile[def.key] === 'string'
-        ? profile[def.key] as string
-        : JSON.stringify(profile[def.key], null, 2),
+      content: formatSection(def.key, profile[def.key]),
       confirmed: false,
     })))
     setExpandedSection('snapshot')
