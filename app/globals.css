@@ -2,51 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #FAFAF8;
-}
-
-:root {
-  --font-sans: 'Inter', system-ui, sans-serif;
 }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 99px; }
 
-@layer components {
-  .chat-user {
-    @apply bg-violet-600 text-white rounded-2xl rounded-br-sm px-4 py-3 text-sm leading-relaxed max-w-[85%] ml-auto;
-  }
-  .chat-ai {
-    @apply bg-white border border-gray-100 text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 text-sm leading-relaxed max-w-[90%] shadow-sm;
-  }
-  .conf-bar {
-    @apply h-1.5 rounded-full bg-gray-100 overflow-hidden;
-  }
-  .conf-fill {
-    @apply h-full rounded-full transition-all duration-500;
-  }
-  .phase-connector {
-    @apply h-0.5 flex-1 bg-gray-200;
-  }
-  .phase-connector.done {
-    @apply bg-violet-500;
-  }
+/* Chat bubbles — plain CSS, no @apply */
+.chat-user {
+  background: #7C3AED;
+  color: #fff;
+  border-radius: 18px 18px 4px 18px;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  line-height: 1.625;
+  max-width: 85%;
+  margin-left: auto;
 }
 
+.chat-ai {
+  background: #fff;
+  border: 1px solid #F3F4F6;
+  color: #1F2937;
+  border-radius: 18px 18px 18px 4px;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  line-height: 1.625;
+  max-width: 90%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+/* Confidence bar */
+.conf-bar {
+  height: 6px;
+  border-radius: 99px;
+  background: #F3F4F6;
+  overflow: hidden;
+}
+.conf-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.5s ease;
+}
+
+/* Typing indicator */
 .typing-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: #9CA3AF;
+  display: inline-block;
   animation: pulseDot 1.4s ease-in-out infinite;
 }
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
