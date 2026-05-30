@@ -210,10 +210,23 @@ function ProfileContent() {
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition"
                   />
                   <div className="flex gap-2">
-                    <button onClick={() => confirmSection(section.key)}
-                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition">
-                      ✓ This is accurate
-                    </button>
+                    {feedback[section.key]?.trim() ? (
+                      <>
+                        <button onClick={() => confirmSection(section.key)}
+                          className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-sm transition">
+                          💾 Save correction
+                        </button>
+                        <button onClick={() => { setFeedback(f => ({ ...f, [section.key]: '' })); confirmSection(section.key) }}
+                          className="py-2 px-3 border border-gray-200 text-gray-500 hover:bg-gray-50 font-medium rounded-xl text-sm transition">
+                          Discard & confirm
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={() => confirmSection(section.key)}
+                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition">
+                        ✓ This is accurate
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

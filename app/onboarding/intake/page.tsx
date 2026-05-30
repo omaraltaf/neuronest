@@ -177,26 +177,19 @@ function IntakeContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newMessages, childContext, confidence }),
       })
-      const { text } = await res.json()
+      const { text, confidence_update, ready_for_synthesis } = await res.json()
 
-      // Extract confidence update if present
-      const confUpdate = extractConfidenceUpdate(text)
-      const clean = cleanAgentResponse(text)
-
-      // Check for synthesis readiness
-      const isSynthesisReady = text.includes('"ready_for_synthesis": true') ||
-        text.includes('"ready_for_synthesis":true')
-
-      const aiMsg: ChatMessage = { role: 'assistant', content: clean, timestamp: new Date().toISOString() }
+      const aiMsg: ChatMessage = { role: 'assistant', content: text, timestamp: new Date().toISOString() }
       const updatedMessages = [...newMessages, aiMsg]
       setMessages(updatedMessages)
 
       let updatedConfidence = confidence
-      if (confUpdate) {
-        updatedConfidence = { ...confidence, ...confUpdate } as DomainConfidence
+      if (confidence_update) {
+        updatedConfidence = { ...confidence, ...confidence_update } as DomainConfidence
         setConfidence(updatedConfidence)
       }
-      if (isSynthesisReady) setReadyForSynthesis(true)
+      if (ready_for_synthesis) setReadyForSynthesis(true)
+
 
       // Save to DB
       await supabase.from('intake_sessions').update({
