@@ -169,6 +169,7 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
               { href: `/child-zone?child=${childId}`, icon: '✨', label: `${childName}'s Zone`, desc: 'Games, flashcards & songs', color: '#E8635A' },
               { href: `/ai?child=${childId}`, icon: '💬', label: 'Ask a question', desc: 'Get specific guidance', color: '#5B7FE8' },
               { href: `/progress?child=${childId}`, icon: '📈', label: 'View progress', desc: 'Milestones & history', color: '#16A34A' },
+              { href: `/documents?child=${childId}`, icon: '📄', label: 'Add documents', desc: 'Upload reports to enrich profile', color: '#0891B2' },
             ].map(a => (
               <Link key={a.href} href={a.href}
                 className="bg-white rounded-2xl border border-gray-100 p-4 hover:border-gray-200 transition">
