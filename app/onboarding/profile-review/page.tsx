@@ -302,6 +302,7 @@ function ProfileContent() {
   const [enrichmentLoading, setEnrichmentLoading] = useState(false)
   const [enrichmentComplete, setEnrichmentComplete] = useState(false)
   const [enrichmentComparison, setEnrichmentComparison] = useState<Record<string, unknown> | null>(null)
+  const [enrichmentDocData, setEnrichmentDocData] = useState<Record<string, unknown>[] | null>(null)
   const enrichmentBottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -370,6 +371,7 @@ function ProfileContent() {
       doc_type: d.doc_type,
       ...(d.extracted_data as Record<string, unknown> || {}),
     }))
+    setEnrichmentDocData(allExtracted)
 
     // Compare against existing profile
     const compareRes = await fetch('/api/enrich-profile', {
@@ -513,6 +515,9 @@ function ProfileContent() {
         messages: newMessages,
         clarificationQuestions: (comparison as Record<string, unknown[]>).clarification_questions || [],
         comparisonSummary: (comparison as Record<string, string>).summary_for_parent || '',
+        extractedDocData: enrichmentDocData,
+        existingProfile: profileData,
+        childName: child?.name || '',
       }),
     })
     const { text, clarificationComplete } = await res.json()

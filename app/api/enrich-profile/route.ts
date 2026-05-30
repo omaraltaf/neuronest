@@ -63,24 +63,61 @@ Return JSON:
     }
   }
 
-  // ── STEP 2: Clarification questions from Dr. Sarah Chen ──
+  // ── STEP 2: Clarification questions — Dr. Sarah Chen with full document context ──
   if (action === 'clarify') {
-    const { messages, clarificationQuestions, comparisonSummary } = body
+    const {
+      messages,
+      clarificationQuestions,
+      comparisonSummary,
+      extractedDocData,   // ← the actual document content
+      existingProfile,    // ← the current profile
+      childName,
+    } = body
+
+    // Format document data clearly for the agent
+    const docContext = extractedDocData
+      ? `EXTRACTED DOCUMENT DATA (you have read and analysed these documents):
+${JSON.stringify(extractedDocData, null, 2)}`
+      : 'No document data provided.'
+
+    const profileContext = existingProfile
+      ? `EXISTING CHILD PROFILE (from the interview):
+${JSON.stringify(existingProfile, null, 2)}`
+      : ''
 
     const systemPrompt = `${INTAKE_AGENT_PROMPT}
 
-IMPORTANT — DOCUMENT ENRICHMENT MODE:
-A new document was uploaded AFTER the initial interview was already completed.
-DO NOT re-ask anything from the original interview.
-ONLY ask the specific follow-up questions listed below, one at a time.
+═══════════════════════════════════════════
+DOCUMENT ENRICHMENT MODE
+═══════════════════════════════════════════
+You are Dr. Sarah Chen. You have completed the initial intake interview with this parent.
+They have now uploaded documents which you have READ AND ANALYSED.
+You have full knowledge of what is in these documents — reference specific findings from them.
 
-QUESTIONS FROM DOCUMENT: ${JSON.stringify(clarificationQuestions)}
-DOCUMENT SUMMARY: ${comparisonSummary}
+${docContext}
 
-When you have asked all questions and received answers, end with exactly: CLARIFICATION_COMPLETE`
+${profileContext}
+
+CHILD NAME: ${childName || 'the child'}
+
+YOUR TASK:
+- You have already presented the document summary to the parent
+- Now ask ONLY the follow-up questions listed below, one at a time
+- Reference specific things from the documents when asking (e.g. "The IOP mentions X — can you tell me more about...")
+- DO NOT say you don't have access to the documents — you do, they are above
+- DO NOT re-ask anything from the original interview
+- Be warm, specific, and clinically precise
+
+FOLLOW-UP QUESTIONS TO ASK:
+${(clarificationQuestions as string[]).map((q, i) => `${i + 1}. ${q}`).join('\n')}
+
+DOCUMENT SUMMARY ALREADY GIVEN TO PARENT: ${comparisonSummary}
+
+When you have asked all questions and received satisfactory answers, 
+end your final message with exactly: CLARIFICATION_COMPLETE`
 
     const apiMessages = (messages as { role: string; content: string }[])
-      .slice(-20)
+      .slice(-24)
       .reduce((acc: { role: string; content: string }[], msg) => {
         if (acc.length === 0 && msg.role === 'assistant') return acc
         const lastRole = acc.at(-1)?.role
@@ -92,7 +129,7 @@ When you have asked all questions and received answers, end with exactly: CLARIF
       return NextResponse.json({ text: 'How can I help?', clarificationComplete: false })
     }
 
-    const text = await callClaude(systemPrompt, undefined, 800, apiMessages)
+    const text = await callClaude(systemPrompt, undefined, 1000, apiMessages)
     const clarificationComplete = text.includes('CLARIFICATION_COMPLETE')
     const displayText = text.replace('CLARIFICATION_COMPLETE', '').trim()
 
