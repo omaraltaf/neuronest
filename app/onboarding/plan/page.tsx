@@ -33,6 +33,16 @@ interface PlanData {
   parent_priorities_addressed?: string[]
 }
 
+function cleanPlanMessage(text: string): string {
+  return text
+    .replace(/---PLAN_JSON---[\s\S]*?---END_PLAN---/g, '')
+    .replace(/```json[\s\S]*?```/g, '')
+    .replace(/PLAN_APPROVED:\s*true/g, '')
+    .replace(/\{[\s\S]*?"overview"[\s\S]*?"goals"[\s\S]*?\}/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 function PlanContent() {
   const router = useRouter()
   const params = useSearchParams()
@@ -92,7 +102,9 @@ function PlanContent() {
       }
 
       if (savedState?.messages && Array.isArray(savedState.messages) && savedState.messages.length > 0) {
-        setMessages(savedState.messages as ChatMessage[])
+        setMessages((savedState.messages as ChatMessage[]).map(m =>
+          m.role === 'assistant' ? { ...m, content: cleanPlanMessage(m.content) } : m
+        ))
         if (savedState.state_data && (savedState.state_data as Record<string, unknown>).planData) {
           setPlanData((savedState.state_data as Record<string, PlanData>).planData)
         }
@@ -134,7 +146,7 @@ function PlanContent() {
 
     if (savedPlan) setPlanId(savedPlan.id)
     setPlanData(plan as PlanData)
-    const aiMsg: ChatMessage = { role: 'assistant', content: message, timestamp: new Date().toISOString() }
+    const aiMsg: ChatMessage = { role: 'assistant', content: cleanPlanMessage(message), timestamp: new Date().toISOString() }
     const initMessages = [aiMsg]
     setMessages(initMessages)
     await persistPlanChat(initMessages, plan as PlanData)
@@ -161,7 +173,7 @@ function PlanContent() {
     })
     const { plan: updatedPlan, message, planApproved } = await res.json()
 
-    const aiMsg: ChatMessage = { role: 'assistant', content: message, timestamp: new Date().toISOString() }
+    const aiMsg: ChatMessage = { role: 'assistant', content: cleanPlanMessage(message), timestamp: new Date().toISOString() }
     const updatedMessages = [...newMessages, aiMsg]
     setMessages(updatedMessages)
     const finalPlan = updatedPlan ? updatedPlan as PlanData : planData
