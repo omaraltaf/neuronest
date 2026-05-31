@@ -33,19 +33,34 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── 2. Generate with Gemini Imagen 3 ────────────────────────────────────────
+  // ── 2. Generate image ───────────────────────────────────────────────────────
   const safePrompt = buildPrompt(query, styleSeed)
+  const OPENAI_KEY = process.env.OPENAI_API_KEY
 
-  // Try Imagen 3 first, fall back to Imagen 2 if rejected
-  let base64 = await generateWithGemini(safePrompt, 'imagen-3.0-generate-002', GEMINI_KEY)
-  if (!base64) {
-    base64 = await generateWithGemini(safePrompt, 'imagen-3.0-fast-generate-001', GEMINI_KEY)
+  let base64: string | null = null
+
+  // Try Gemini Imagen if key looks valid (starts with AIzaSy)
+  if (GEMINI_KEY && GEMINI_KEY.startsWith('AIzaSy')) {
+    base64 = await generateWithGemini(safePrompt, 'imagen-3.0-generate-002', GEMINI_KEY)
+    if (!base64) {
+      base64 = await generateWithGemini(safePrompt, 'imagen-3.0-fast-generate-001', GEMINI_KEY)
+    }
+  }
+
+  // Fall back to DALL-E 3 if Gemini failed or unavailable
+  if (!base64 && OPENAI_KEY && OPENAI_KEY !== 'your_openai_api_key_here') {
+    base64 = await generateWithDallE(safePrompt, OPENAI_KEY)
   }
 
   if (!base64) {
-    // Return debug info if ?debug=1 is passed
     if (req.nextUrl.searchParams.get('debug')) {
-      return NextResponse.json({ error: 'Image generation failed', query, prompt: safePrompt, keyPresent: !!GEMINI_KEY, keyPrefix: GEMINI_KEY?.slice(0, 10) })
+      return NextResponse.json({
+        error: 'No image generated',
+        geminiKeyValid: GEMINI_KEY?.startsWith('AIzaSy') ?? false,
+        geminiKeyPrefix: GEMINI_KEY?.slice(0, 12) || 'missing',
+        openaiKeyPresent: !!(OPENAI_KEY && OPENAI_KEY !== 'your_openai_api_key_here'),
+        prompt: safePrompt,
+      })
     }
     return svgPlaceholder(query)
   }
@@ -136,6 +151,39 @@ async function generateWithGemini(
     return data?.predictions?.[0]?.bytesBase64Encoded || null
   } catch (err) {
     console.error(`Gemini ${model} exception:`, err)
+    return null
+  }
+}
+
+async function generateWithDallE(prompt: string, apiKey: string): Promise<string | null> {
+  try {
+    const res = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'dall-e-3',
+        prompt,
+        n: 1,
+        size: '1024x768',
+        response_format: 'b64_json',
+        quality: 'standard',
+        style: 'natural',  // 'natural' = more realistic, 'vivid' = more artistic
+      }),
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      console.error('DALL-E error:', res.status, err.slice(0, 300))
+      return null
+    }
+
+    const data = await res.json()
+    return data?.data?.[0]?.b64_json || null
+  } catch (err) {
+    console.error('DALL-E exception:', err)
     return null
   }
 }
