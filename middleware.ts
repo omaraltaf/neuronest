@@ -24,8 +24,15 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const path = request.nextUrl.pathname
 
-  const publicPaths = ['/login', '/signup', '/auth/callback', '/api/images']
-  if (publicPaths.some(p => path.startsWith(p))) {
+  // API routes that don't need auth — always pass through
+  const publicApiPaths = ['/api/images', '/api/ping']
+  if (publicApiPaths.some(p => path.startsWith(p))) {
+    return supabaseResponse
+  }
+
+  // Auth pages — redirect to dashboard if already logged in
+  const authPages = ['/login', '/signup', '/auth/callback']
+  if (authPages.some(p => path.startsWith(p))) {
     if (user) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
@@ -34,6 +41,7 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // Everything else — require auth
   if (!user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
