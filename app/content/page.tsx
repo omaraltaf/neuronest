@@ -19,22 +19,37 @@ const TYPE_COLORS: Record<string, string> = {
 
 // ── Visual Renderers ──────────────────────────────────────────────────────────
 
-function UnsplashImage({ query, alt }: { query: string; alt: string }) {
-  // Use Unsplash source API - free, no auth needed
-  const encodedQuery = encodeURIComponent(query)
-  const src = `https://source.unsplash.com/400x300/?${encodedQuery}`
+function StoryImage({ query, alt, text }: { query: string; alt: string; text: string }) {
+  // Use our server-side image proxy to avoid CORS/network issues
+  const src = `/api/images?q=${encodeURIComponent(query)}&t=${Date.now()}`
   return (
-    <div className="w-full rounded-xl overflow-hidden bg-gray-100" style={{ aspectRatio: '4/3' }}>
+    <div className="w-full overflow-hidden bg-gray-100 relative" style={{ height: 200 }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt={alt}
-        className="w-full h-full object-cover"
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         loading="lazy"
-        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+        onError={e => {
+          const el = e.target as HTMLImageElement
+          el.style.display = 'none'
+          if (el.parentElement) {
+            el.parentElement.innerHTML = `<div style="height:200px;display:flex;align-items:center;justify-content:center;background:#F3F4F6;font-size:48px">🖼️</div>`
+          }
+        }}
       />
     </div>
   )
+}
+
+// Derive image query from sentence text if image_query not set
+function getImageQuery(s: Record<string, unknown>): string {
+  if (s.image_query) return s.image_query as string
+  // Fallback: extract key words from sentence text
+  const text = (s.text as string || '').toLowerCase()
+  const keywords = ['school', 'teacher', 'friend', 'home', 'play', 'eat', 'sleep', 'walk', 'talk', 'happy', 'calm', 'breathe', 'sit', 'share']
+  const found = keywords.find(k => text.includes(k))
+  return found ? `child ${found}` : 'child happy'
 }
 
 function SocialStoryViewer({ data }: { data: Record<string, unknown> }) {
@@ -47,6 +62,13 @@ function SocialStoryViewer({ data }: { data: Record<string, unknown> }) {
         <div className="font-black text-lg text-gray-900">{data.title as string}</div>
       </div>
 
+      {/* Notice for stories without image queries — suggest regenerating */}
+      {Array.isArray(data.sentences) && !(data.sentences as Record<string, unknown>[])[0]?.image_query && (
+        <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-700">
+          💡 This story was generated before real photos were added. Give feedback &ldquo;add real photos&rdquo; to get photos for each sentence.
+        </div>
+      )}
+
       {/* Sentences with real photos */}
       {Array.isArray(data.sentences) && (
         <div className="space-y-3">
@@ -56,12 +78,11 @@ function SocialStoryViewer({ data }: { data: Record<string, unknown> }) {
                 s.type === 'directive' ? 'border-emerald-200' : 'border-gray-100'
               }`}>
               {/* Real photo */}
-              {!!(s.image_query) && (
-                <UnsplashImage
-                  query={s.image_query as string}
-                  alt={s.text as string}
-                />
-              )}
+              <StoryImage
+                query={getImageQuery(s)}
+                alt={s.text as string}
+                text={s.text as string}
+              />
               {/* Sentence */}
               <div className={`p-3.5 flex items-start gap-3 ${
                 s.type === 'directive' ? 'bg-emerald-50' : 'bg-white'
