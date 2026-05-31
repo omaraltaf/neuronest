@@ -593,40 +593,36 @@ function ProfileContent() {
     const childName = name || child?.name || 'Your child'
     const defs = SECTION_DEFS(childName)
 
-    // Load all section agent_state records in parallel
-    const chatResults = await Promise.all(
-      defs.map(def =>
-        supabase.from('agent_state')
-          .select('messages, state_data')
-          .eq('child_id', childId)
-          .eq('agent_type', `profile-review-${def.key}`)
-          .maybeSingle()
-      )
-    )
+    // Single bulk query — more reliable than 10 parallel queries
+    const { data: allSavedChats } = await supabase
+      .from('agent_state')
+      .select('agent_type, messages, state_data')
+      .eq('child_id', childId)
+      .like('agent_type', 'profile-review-%')
 
-    const restoredSections: ProfileSection[] = defs.map((def, i) => {
-      const saved = chatResults[i].data
-      const savedMessages = (saved?.messages as ChatMessage[]) || []
-      const savedContent = saved?.state_data
-        ? (saved.state_data as Record<string, string>).updatedContent
-        : null
+    // Build lookup map
+    const chatMap: Record<string, { messages: ChatMessage[]; updatedContent?: string }> = {}
+    for (const row of (allSavedChats || [])) {
+      chatMap[row.agent_type] = {
+        messages: (row.messages as ChatMessage[]) || [],
+        updatedContent: (row.state_data as Record<string, string>)?.updatedContent || undefined,
+      }
+    }
 
-      // A section is confirmed if it has chat history (parent interacted with it)
-      // OR if it has saved updated content
-      const hasChat = savedMessages.length > 0
-      const isConfirmed = hasChat  // sections with chat were reviewed by parent
-
+    const restoredSections: ProfileSection[] = defs.map(def => {
+      const saved = chatMap[`profile-review-${def.key}`]
+      const savedMessages = saved?.messages || []
+      const savedContent = saved?.updatedContent || null
       return {
         ...def,
         content: savedContent || formatSection(def.key, profile[def.key]),
-        confirmed: isConfirmed,
+        confirmed: savedMessages.length > 0,
         chatMessages: savedMessages,
       }
     })
 
     setSections(restoredSections)
-    const allDone = restoredSections.every(s => s.confirmed)
-    setAllConfirmed(allDone)
+    setAllConfirmed(restoredSections.every(s => s.confirmed))
   }
 
   const handleUpdateContent = (key: string, newContent: string, chatMessages: ChatMessage[]) => {
