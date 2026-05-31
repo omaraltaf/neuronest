@@ -19,30 +19,60 @@ const TYPE_COLORS: Record<string, string> = {
 
 // ── Visual Renderers ──────────────────────────────────────────────────────────
 
+function UnsplashImage({ query, alt }: { query: string; alt: string }) {
+  // Use Unsplash source API - free, no auth needed
+  const encodedQuery = encodeURIComponent(query)
+  const src = `https://source.unsplash.com/400x300/?${encodedQuery}`
+  return (
+    <div className="w-full rounded-xl overflow-hidden bg-gray-100" style={{ aspectRatio: '4/3' }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-cover"
+        loading="lazy"
+        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+      />
+    </div>
+  )
+}
+
 function SocialStoryViewer({ data }: { data: Record<string, unknown> }) {
   const colour = (data.cover_colour as string) || '#5B7FE8'
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Cover */}
       <div className="rounded-2xl p-6 text-center" style={{ background: colour + '20', border: `2px solid ${colour}30` }}>
         <div className="text-6xl mb-2">{data.cover_emoji as string || '📖'}</div>
         <div className="font-black text-lg text-gray-900">{data.title as string}</div>
       </div>
 
-      {/* Sentences */}
+      {/* Sentences with real photos */}
       {Array.isArray(data.sentences) && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {(data.sentences as Record<string, unknown>[]).map((s, i) => (
             <div key={i}
-              className={`flex items-start gap-3 rounded-xl p-3.5 ${
-                s.type === 'directive' ? 'bg-emerald-50 border border-emerald-100' : 'bg-white border border-gray-100'
+              className={`rounded-2xl overflow-hidden border ${
+                s.type === 'directive' ? 'border-emerald-200' : 'border-gray-100'
               }`}>
-              <span className="text-2xl flex-shrink-0">{s.emoji as string}</span>
-              <div>
-                <div className="text-sm text-gray-800 leading-relaxed">{s.text as string}</div>
-                <div className="text-[9px] font-bold uppercase tracking-wide mt-0.5"
-                  style={{ color: s.type === 'directive' ? '#16A34A' : '#9CA3AF' }}>
-                  {s.type as string}
+              {/* Real photo */}
+              {!!(s.image_query) && (
+                <UnsplashImage
+                  query={s.image_query as string}
+                  alt={s.text as string}
+                />
+              )}
+              {/* Sentence */}
+              <div className={`p-3.5 flex items-start gap-3 ${
+                s.type === 'directive' ? 'bg-emerald-50' : 'bg-white'
+              }`}>
+                <span className="text-2xl flex-shrink-0">{s.emoji as string}</span>
+                <div>
+                  <div className="text-sm text-gray-800 leading-relaxed font-medium">{s.text as string}</div>
+                  <div className="text-[9px] font-bold uppercase tracking-wide mt-0.5"
+                    style={{ color: s.type === 'directive' ? '#16A34A' : '#9CA3AF' }}>
+                    {s.type as string}
+                  </div>
                 </div>
               </div>
             </div>

@@ -84,22 +84,34 @@ function SocialStoryPrint({ data, title }: { data: Record<string, unknown>; titl
     <div className="max-w-2xl mx-auto px-8 py-6">
       <PrintHeader title={title} emoji={data.cover_emoji as string || '📖'} colour={colour} />
 
-      {/* Each sentence on its own clear visual block */}
-      <div className="space-y-4">
+      {/* Each sentence as a full card — photo + text — print-ready */}
+      <div className="space-y-6">
         {sentences.map((s, i) => (
-          <div key={i} className="flex items-start gap-4 p-4 rounded-2xl border-2"
+          <div key={i} className="rounded-2xl overflow-hidden border-2"
             style={{
-              borderColor: s.type === 'directive' ? '#16A34A' : colour + '40',
-              background: s.type === 'directive' ? '#F0FFF4' : colour + '08',
+              borderColor: s.type === 'directive' ? '#16A34A' : colour + '60',
             }}>
-            <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center text-5xl">
-              {s.emoji as string}
-            </div>
-            <div className="flex-1">
-              <div className="text-base leading-relaxed text-gray-800 font-medium">{s.text as string}</div>
-              <div className="text-xs mt-1 font-bold uppercase tracking-wide"
-                style={{ color: s.type === 'directive' ? '#16A34A' : colour }}>
-                {s.type as string}
+            {/* Real photo - full width */}
+            {!!(s.image_query) && (
+              <div className="w-full overflow-hidden" style={{ height: 220 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`https://source.unsplash.com/600x400/?${encodeURIComponent(s.image_query as string)}`}
+                  alt={s.text as string}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </div>
+            )}
+            {/* Text below photo */}
+            <div className="flex items-start gap-4 p-4"
+              style={{ background: s.type === 'directive' ? '#F0FFF4' : colour + '08' }}>
+              <div className="flex-shrink-0 text-4xl">{s.emoji as string}</div>
+              <div className="flex-1">
+                <div className="text-lg leading-relaxed text-gray-800 font-semibold">{s.text as string}</div>
+                <div className="text-xs mt-1 font-black uppercase tracking-wide"
+                  style={{ color: s.type === 'directive' ? '#16A34A' : colour }}>
+                  {s.type as string}
+                </div>
               </div>
             </div>
           </div>

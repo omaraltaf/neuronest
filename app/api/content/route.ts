@@ -27,17 +27,32 @@ Rules:
 - 2:1 ratio: descriptive/perspective sentences to directive sentences
 - Every sentence starts with a relevant emoji
 
+CRITICAL — REAL WORLD IMAGES:
+For each sentence, provide a specific Unsplash search query that will find a real photograph matching the sentence content.
+The image should show real people, real objects, real places — not cartoons or illustrations.
+Examples:
+- "I walk into school" → "child walking through school door"
+- "My teacher says good morning" → "friendly teacher greeting child classroom"
+- "I sit at my desk" → "child sitting at school desk"
+- "When I feel worried I take a deep breath" → "child taking deep breath calm"
+Keep queries specific, child-friendly, and focused on the main subject of the sentence.
+
 Return JSON:
 {
   "title": "story title",
   "sentences": [
-    { "emoji": "🏫", "text": "sentence here", "type": "descriptive|perspective|directive" }
+    {
+      "emoji": "🏫",
+      "text": "sentence here",
+      "type": "descriptive|perspective|directive",
+      "image_query": "specific unsplash search query for a real photograph"
+    }
   ],
   "cover_emoji": "🌟",
   "cover_colour": "#hex colour for the story theme",
   "how_to_use": "short parent instruction",
   "frequency": "e.g. Read together every morning before school",
-  "print_tip": "e.g. Print each sentence on a separate card with the emoji large on top"
+  "print_tip": "e.g. Print each sentence on a separate card with the photo above the text"
 }`,
 
   activity_pack: (goal, child) => `Create a visual activity pack for ${child.name} targeting: ${goal.label}
