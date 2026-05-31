@@ -461,10 +461,12 @@ function RolePlayViewer({ data }: { data: Record<string, unknown> }) {
   )
 }
 
-function ContentViewer({ item, onClose, onRevise, revising }: {
+function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, revising }: {
   item: Record<string, unknown>
   onClose: () => void
   onRevise: (feedback: string) => void
+  onDelete: () => void
+  onPrint: () => void
   revising: boolean
 }) {
   const [feedbackMode, setFeedbackMode] = useState(false)
@@ -513,13 +515,23 @@ function ContentViewer({ item, onClose, onRevise, revising }: {
           )}
         </div>
 
-        {/* Feedback footer */}
-        <div className="flex-shrink-0 border-t border-gray-100 px-4 py-3">
+        {/* Footer actions */}
+        <div className="flex-shrink-0 border-t border-gray-100 px-4 py-3 space-y-2">
           {!feedbackMode ? (
-            <button onClick={() => setFeedbackMode(true)}
-              className="w-full py-2.5 border border-violet-200 text-violet-600 hover:bg-violet-50 font-bold rounded-xl text-sm transition">
-              💬 Give feedback to revise
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => setFeedbackMode(true)}
+                className="flex-1 py-2.5 border border-violet-200 text-violet-600 hover:bg-violet-50 font-bold rounded-xl text-sm transition">
+                💬 Revise
+              </button>
+              <button onClick={onPrint}
+                className="py-2.5 px-4 border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold rounded-xl text-sm transition">
+                🖨️ Print
+              </button>
+              <button onClick={onDelete}
+                className="py-2.5 px-4 border border-red-100 text-red-400 hover:bg-red-50 font-bold rounded-xl text-sm transition">
+                🗑️
+              </button>
+            </div>
           ) : (
             <div className="space-y-2">
               <textarea value={feedback} onChange={e => setFeedback(e.target.value)}
@@ -617,6 +629,7 @@ function ContentContent() {
   const [revising, setRevising] = useState(false)
   const [viewing, setViewing] = useState<Record<string, unknown> | null>(null)
   const [filterType, setFilterType] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     if (!childId) return
@@ -694,6 +707,21 @@ function ContentContent() {
       setContentItems(prev => prev.map(item => item.id === updated.id ? updated : item))
     }
     setRevising(false)
+  }
+
+  const handleDelete = async () => {
+    if (!viewing) return
+    await supabase.from('generated_content').delete().eq('id', viewing.id as string)
+    setContentItems(prev => prev.filter(item => item.id !== viewing.id))
+    setViewing(null)
+    setConfirmDelete(false)
+  }
+
+  const handlePrint = () => {
+    if (!viewing) return
+    // Open print view in new tab
+    const printUrl = `/content/print?id=${viewing.id as string}&child=${childId}`
+    window.open(printUrl, '_blank')
   }
 
   const filtered = filterType ? contentItems.filter(c => c.content_type === filterType) : contentItems
@@ -787,12 +815,34 @@ function ContentContent() {
           generating={generating} />
       )}
 
-      {viewing && (
+      {viewing && !confirmDelete && (
         <ContentViewer
           item={viewing}
           onClose={() => setViewing(null)}
           onRevise={handleRevise}
+          onDelete={() => setConfirmDelete(true)}
+          onPrint={handlePrint}
           revising={revising} />
+      )}
+
+      {confirmDelete && viewing && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <div className="text-3xl mb-3 text-center">🗑️</div>
+            <div className="font-black text-gray-900 text-center mb-1">Delete this content?</div>
+            <div className="text-sm text-gray-500 text-center mb-5 line-clamp-2">{viewing.title as string}</div>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDelete(false)}
+                className="flex-1 py-2.5 border border-gray-200 text-gray-600 font-bold rounded-xl text-sm">
+                Cancel
+              </button>
+              <button onClick={handleDelete}
+                className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl text-sm">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )
