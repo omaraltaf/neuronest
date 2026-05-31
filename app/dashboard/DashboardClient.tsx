@@ -1,4 +1,5 @@
 'use client'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -46,6 +47,27 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
 }) {
   const router = useRouter()
   const supabase = createClient()
+  const [notifications, setNotifications] = useState<Record<string, unknown>[]>([])
+  const [showNotifs, setShowNotifs] = useState(false)
+
+  useEffect(() => {
+    const fetchNotifs = async () => {
+      const res = await fetch(`/api/notifications?child=${childId}`)
+      const { notifications: notifs } = await res.json()
+      setNotifications(notifs || [])
+    }
+    fetchNotifs()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const markAllRead = async () => {
+    await fetch('/api/notifications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all: true, childId }),
+    })
+    setNotifications([])
+    setShowNotifs(false)
+  }
   const childName = child.name as string
   const childId = child.id as string
 
@@ -86,9 +108,44 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
               className="text-xs font-bold px-3 py-1.5 rounded-full bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-100 transition">
               ✨ {childName}&apos;s Zone
             </Link>
+            <button onClick={() => setShowNotifs(s => !s)} className="relative p-1.5 text-gray-500 hover:text-violet-600 transition">
+              🔔
+              {notifications.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                  {notifications.length > 9 ? '9+' : notifications.length}
+                </span>
+              )}
+            </button>
             <button onClick={signOut} className="text-xs text-gray-400 hover:text-gray-600 transition">Sign out</button>
           </div>
         </div>
+
+        {/* Notification dropdown */}
+        {showNotifs && (
+          <div className="absolute right-4 top-14 w-80 bg-white rounded-2xl border border-gray-100 shadow-lg z-20 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
+              <span className="font-bold text-sm text-gray-900">Notifications</span>
+              {notifications.length > 0 && (
+                <button onClick={markAllRead} className="text-xs text-violet-600 hover:underline">Mark all read</button>
+              )}
+            </div>
+            <div className="max-h-64 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <div className="px-4 py-6 text-center text-xs text-gray-400">All caught up! 🎉</div>
+              ) : notifications.map(n => (
+                <Link key={n.id as string}
+                  href={n.action_url as string || '/dashboard'}
+                  onClick={() => { fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: n.id }) }); setShowNotifs(false) }}
+                  className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 transition">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-xs text-gray-900">{n.title as string}</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5 leading-relaxed">{(n.body as string).replace(/\s*id:[a-z0-9-]+/g, '')}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Nav */}
         <div className="max-w-2xl mx-auto px-4 pb-2 flex gap-1">
@@ -170,6 +227,8 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
               { href: `/ai?child=${childId}`, icon: '💬', label: 'Ask a question', desc: 'Get specific guidance', color: '#5B7FE8' },
               { href: `/progress?child=${childId}`, icon: '📈', label: 'View progress', desc: 'Milestones & history', color: '#16A34A' },
               { href: `/documents?child=${childId}`, icon: '📄', label: 'Add documents', desc: 'Upload reports to enrich profile', color: '#0891B2' },
+              { href: `/content?child=${childId}`, icon: '✨', label: 'Content library', desc: 'Activities, stories & flashcards', color: '#7C3AED' },
+              { href: `/report?child=${childId}`, icon: '📋', label: 'Progress report', desc: 'Print or save PDF for school', color: '#16A34A' },
             ].map(a => (
               <Link key={a.href} href={a.href}
                 className="bg-white rounded-2xl border border-gray-100 p-4 hover:border-gray-200 transition">
