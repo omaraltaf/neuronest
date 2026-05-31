@@ -42,7 +42,13 @@ export async function GET(req: NextRequest) {
     base64 = await generateWithGemini(safePrompt, 'imagen-3.0-fast-generate-001', GEMINI_KEY)
   }
 
-  if (!base64) return svgPlaceholder(query)
+  if (!base64) {
+    // Return debug info if ?debug=1 is passed
+    if (req.nextUrl.searchParams.get('debug')) {
+      return NextResponse.json({ error: 'Image generation failed', query, prompt: safePrompt, keyPresent: !!GEMINI_KEY, keyPrefix: GEMINI_KEY?.slice(0, 10) })
+    }
+    return svgPlaceholder(query)
+  }
 
   // ── 3. Save to Supabase Storage so it's never regenerated ──────────────────
   if (contentId && childId) {
@@ -122,7 +128,7 @@ async function generateWithGemini(
 
     if (!res.ok) {
       const err = await res.text()
-      console.error(`Gemini ${model} error:`, res.status, err.slice(0, 200))
+      console.error(`Gemini ${model} error ${res.status}:`, err.slice(0, 500))
       return null
     }
 
