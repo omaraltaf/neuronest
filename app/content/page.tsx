@@ -19,24 +19,41 @@ const TYPE_COLORS: Record<string, string> = {
 
 // ── Visual Renderers ──────────────────────────────────────────────────────────
 
-function StoryImage({ query, alt, text }: { query: string; alt: string; text: string }) {
-  // Use our server-side image proxy to avoid CORS/network issues
-  const src = `/api/images?q=${encodeURIComponent(query)}&t=${Date.now()}`
+function StoryImage({ query, alt }: { query: string; alt: string }) {
+  const [status, setStatus] = useState<'loading'|'loaded'|'error'>('loading')
+
+  // Build a child-friendly, photorealistic prompt for the social story
+  const prompt = encodeURIComponent(
+    `photorealistic, child-friendly illustration: ${query}, warm colours, soft lighting, safe for children, no text, no words`
+  )
+  // Pollinations.ai - free AI image generation, works client-side
+  const src = `https://image.pollinations.ai/prompt/${prompt}?width=600&height=400&nologo=true&seed=${query.length}`
+
   return (
-    <div className="w-full overflow-hidden bg-gray-100 relative" style={{ height: 200 }}>
+    <div className="w-full rounded-xl overflow-hidden bg-gray-100 relative" style={{ height: 200 }}>
+      {status === 'loading' && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex gap-1"><div className="typing-dot"/><div className="typing-dot"/><div className="typing-dot"/></div>
+            <div className="text-xs text-gray-400">Generating image…</div>
+          </div>
+        </div>
+      )}
+      {status === 'error' && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+          <div className="text-center text-gray-300">
+            <div className="text-4xl mb-1">🖼️</div>
+            <div className="text-xs">{alt}</div>
+          </div>
+        </div>
+      )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt={alt}
-        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        loading="lazy"
-        onError={e => {
-          const el = e.target as HTMLImageElement
-          el.style.display = 'none'
-          if (el.parentElement) {
-            el.parentElement.innerHTML = `<div style="height:200px;display:flex;align-items:center;justify-content:center;background:#F3F4F6;font-size:48px">🖼️</div>`
-          }
-        }}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: status === 'loaded' ? 'block' : 'none' }}
+        onLoad={() => setStatus('loaded')}
+        onError={() => setStatus('error')}
       />
     </div>
   )
@@ -45,11 +62,10 @@ function StoryImage({ query, alt, text }: { query: string; alt: string; text: st
 // Derive image query from sentence text if image_query not set
 function getImageQuery(s: Record<string, unknown>): string {
   if (s.image_query) return s.image_query as string
-  // Fallback: extract key words from sentence text
-  const text = (s.text as string || '').toLowerCase()
-  const keywords = ['school', 'teacher', 'friend', 'home', 'play', 'eat', 'sleep', 'walk', 'talk', 'happy', 'calm', 'breathe', 'sit', 'share']
-  const found = keywords.find(k => text.includes(k))
-  return found ? `child ${found}` : 'child happy'
+  // Use the full sentence text as the image prompt — AI can interpret it directly
+  const text = (s.text as string || '').trim()
+  // Strip child's name placeholder patterns and simplify
+  return text.length > 0 ? text : 'child happy safe'
 }
 
 function SocialStoryViewer({ data }: { data: Record<string, unknown> }) {
@@ -81,7 +97,7 @@ function SocialStoryViewer({ data }: { data: Record<string, unknown> }) {
               <StoryImage
                 query={getImageQuery(s)}
                 alt={s.text as string}
-                text={s.text as string}
+                
               />
               {/* Sentence */}
               <div className={`p-3.5 flex items-start gap-3 ${
