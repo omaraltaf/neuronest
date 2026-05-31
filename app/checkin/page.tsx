@@ -5,6 +5,16 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { ChatMessage } from '@/types'
 
+function cleanMessage(text: string): string {
+  return text
+    .replace(/```json[\s\S]*?```/g, '')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/\{[\s\S]*?"wins"[\s\S]*?\}/g, '')
+    .replace(/\{[\s\S]*?"recommendations"[\s\S]*?\}/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 function CheckinContent() {
   const params = useSearchParams()
   const router = useRouter()
@@ -69,7 +79,7 @@ function CheckinContent() {
         }),
       })
       const { text } = await openingRes.json()
-      const aiMsg: ChatMessage = { role: 'assistant', content: text, timestamp: new Date().toISOString() }
+      const aiMsg: ChatMessage = { role: 'assistant', content: cleanMessage(text), timestamp: new Date().toISOString() }
       setMessages([aiMsg])
 
       if (newCheckin) {
@@ -94,7 +104,7 @@ function CheckinContent() {
       body: JSON.stringify({ messages: newMessages, childName, weekNumber, action: 'continue' }),
     })
     const { text, checkinComplete, summary } = await res.json()
-    const aiMsg: ChatMessage = { role: 'assistant', content: text, timestamp: new Date().toISOString() }
+    const aiMsg: ChatMessage = { role: 'assistant', content: cleanMessage(text), timestamp: new Date().toISOString() }
     const finalMessages = [...newMessages, aiMsg]
     setMessages(finalMessages)
     setLoading(false)
