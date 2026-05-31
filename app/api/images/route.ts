@@ -39,8 +39,8 @@ export async function GET(req: NextRequest) {
 
   let base64: string | null = null
 
-  // Try Gemini Imagen if key looks valid (starts with AIzaSy)
-  if (GEMINI_KEY && GEMINI_KEY.startsWith('AIzaSy')) {
+  // Try Gemini Imagen
+  if (GEMINI_KEY) {
     base64 = await generateWithGemini(safePrompt, 'imagen-3.0-generate-002', GEMINI_KEY)
     if (!base64) {
       base64 = await generateWithGemini(safePrompt, 'imagen-3.0-fast-generate-001', GEMINI_KEY)
@@ -56,8 +56,8 @@ export async function GET(req: NextRequest) {
     if (req.nextUrl.searchParams.get('debug')) {
       return NextResponse.json({
         error: 'No image generated',
-        geminiKeyValid: GEMINI_KEY?.startsWith('AIzaSy') ?? false,
-        geminiKeyPrefix: GEMINI_KEY?.slice(0, 12) || 'missing',
+        geminiKeyPresent: !!GEMINI_KEY,
+        geminiKeyPrefix: GEMINI_KEY?.slice(0, 15) || 'missing',
         openaiKeyPresent: !!(OPENAI_KEY && OPENAI_KEY !== 'your_openai_api_key_here'),
         prompt: safePrompt,
       })
@@ -122,10 +122,15 @@ async function generateWithGemini(
   model: string,
   apiKey: string
 ): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`,
-      {
+  // Try both v1 and v1beta — key type determines which works
+  const endpoints = [
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1/models/${model}:predict?key=${apiKey}`,
+  ]
+
+  for (const url of endpoints) {
+    try {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -138,21 +143,24 @@ async function generateWithGemini(
             negativePrompt: 'cartoon, illustration, drawing, anime, sketch, painting, watercolor, digital art, 3d render, CGI, clipart, vector art, animated',
           },
         }),
+      })
+
+      const responseText = await res.text()
+
+      if (!res.ok) {
+        console.error(`Gemini ${model} ${url.includes('v1beta') ? 'v1beta' : 'v1'} error ${res.status}:`, responseText.slice(0, 500))
+        continue // try next endpoint
       }
-    )
 
-    if (!res.ok) {
-      const err = await res.text()
-      console.error(`Gemini ${model} error ${res.status}:`, err.slice(0, 500))
-      return null
+      const data = JSON.parse(responseText)
+      const b64 = data?.predictions?.[0]?.bytesBase64Encoded
+      if (b64) return b64
+
+    } catch (err) {
+      console.error(`Gemini ${model} exception:`, err)
     }
-
-    const data = await res.json()
-    return data?.predictions?.[0]?.bytesBase64Encoded || null
-  } catch (err) {
-    console.error(`Gemini ${model} exception:`, err)
-    return null
   }
+  return null
 }
 
 async function generateWithDallE(prompt: string, apiKey: string): Promise<string | null> {
