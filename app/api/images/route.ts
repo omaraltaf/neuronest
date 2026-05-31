@@ -1,22 +1,107 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET(req: NextRequest) {
-  const query = req.nextUrl.searchParams.get('q') || 'child happy'
+  const query     = req.nextUrl.searchParams.get('q') || 'child happy'
+  const contentId = req.nextUrl.searchParams.get('cid') || ''
+  const index     = req.nextUrl.searchParams.get('i') || '0'
+  const childId   = req.nextUrl.searchParams.get('child') || ''
   const GEMINI_KEY = process.env.GEMINI_API_KEY
 
   if (!GEMINI_KEY || GEMINI_KEY === 'your_gemini_api_key_here') {
     return svgPlaceholder(query)
   }
 
-  // Build a child-safe, photorealistic prompt
-  const prompt = `Photorealistic illustration suitable for a children's social story book: ${query}. 
-Warm, soft lighting. Child-friendly. Safe, positive scene. No text or words in the image. 
-Style: gentle, realistic, like a modern children's picture book photograph.`
+  // ── 1. Check cache first ────────────────────────────────────────────────────
+  if (contentId && childId) {
+    const supabase = createClient()
+    const { data: cached } = await supabase
+      .from('story_images')
+      .select('storage_path')
+      .eq('content_id', contentId)
+      .eq('sentence_index', parseInt(index))
+      .maybeSingle()
 
+    if (cached?.storage_path) {
+      const { data: { publicUrl } } = supabase.storage
+        .from('neuronest-documents')
+        .getPublicUrl(cached.storage_path)
+
+      // Redirect to the cached image in Supabase Storage
+      return NextResponse.redirect(publicUrl, { status: 302 })
+    }
+  }
+
+  // ── 2. Generate with Gemini Imagen 3 ────────────────────────────────────────
+  const safePrompt = buildPrompt(query)
+
+  // Try Imagen 3 first, fall back to Imagen 2 if rejected
+  let base64 = await generateWithGemini(safePrompt, 'imagen-3.0-generate-002', GEMINI_KEY)
+  if (!base64) {
+    base64 = await generateWithGemini(safePrompt, 'imagen-3.0-fast-generate-001', GEMINI_KEY)
+  }
+
+  if (!base64) return svgPlaceholder(query)
+
+  // ── 3. Save to Supabase Storage so it's never regenerated ──────────────────
+  if (contentId && childId) {
+    try {
+      const supabase = createClient()
+      const buffer = Buffer.from(base64, 'base64')
+      const storagePath = `story-images/${childId}/${contentId}/${index}.png`
+
+      await supabase.storage
+        .from('neuronest-documents')
+        .upload(storagePath, buffer, {
+          contentType: 'image/png',
+          upsert: true,
+        })
+
+      await supabase.from('story_images').upsert({
+        child_id: childId,
+        content_id: contentId,
+        sentence_index: parseInt(index),
+        prompt: safePrompt,
+        storage_path: storagePath,
+      }, { onConflict: 'content_id,sentence_index' })
+    } catch (err) {
+      console.error('Failed to cache image:', err)
+      // Continue — still return the image even if caching fails
+    }
+  }
+
+  // ── 4. Return the generated image ──────────────────────────────────────────
+  const buffer = Buffer.from(base64, 'base64')
+  return new NextResponse(buffer, {
+    headers: {
+      'Content-Type': 'image/png',
+      'Cache-Control': 'public, max-age=2592000', // 30 days
+    },
+  })
+}
+
+function buildPrompt(query: string): string {
+  // Strip child names and personal identifiers — Gemini blocks named individuals
+  const cleaned = query
+    .replace(/\b[A-Z][a-z]+\b/g, 'the child') // Replace proper nouns
+    .replace(/\bI\b/g, 'the child')
+    .replace(/\bmy\b/gi, 'the child\'s')
+    .slice(0, 200)
+
+  return `Children's picture book illustration, photorealistic style, warm soft lighting: ${cleaned}.
+Safe, positive, child-friendly. No text, no words, no letters in the image.
+Style: gentle realistic illustration like a high-quality children's book.
+Composition: clear subject, bright colours, friendly atmosphere.`
+}
+
+async function generateWithGemini(
+  prompt: string,
+  model: string,
+  apiKey: string
+): Promise<string | null> {
   try {
-    // Gemini Imagen 3 via Google AI API
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -26,7 +111,7 @@ Style: gentle, realistic, like a modern children's picture book photograph.`
             sampleCount: 1,
             aspectRatio: '4:3',
             safetySetting: 'block_only_high',
-            personGeneration: 'allow_adult',
+            personGeneration: 'allow_all',
           },
         }),
       }
@@ -34,41 +119,26 @@ Style: gentle, realistic, like a modern children's picture book photograph.`
 
     if (!res.ok) {
       const err = await res.text()
-      console.error('Gemini Imagen error:', res.status, err)
-      return svgPlaceholder(query)
+      console.error(`Gemini ${model} error:`, res.status, err.slice(0, 200))
+      return null
     }
 
     const data = await res.json()
-    const base64 = data?.predictions?.[0]?.bytesBase64Encoded
-
-    if (!base64) {
-      console.error('No image in Gemini response')
-      return svgPlaceholder(query)
-    }
-
-    // Return image directly
-    const buffer = Buffer.from(base64, 'base64')
-    return new NextResponse(buffer, {
-      headers: {
-        'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=86400',
-      },
-    })
+    return data?.predictions?.[0]?.bytesBase64Encoded || null
   } catch (err) {
-    console.error('Image generation error:', err)
-    return svgPlaceholder(query)
+    console.error(`Gemini ${model} exception:`, err)
+    return null
   }
 }
 
 function svgPlaceholder(label: string) {
-  const words = label.split(' ').slice(0, 3).join(' ')
+  const words = label.replace(/\b[A-Z][a-z]+\b/g, '').trim().split(' ').slice(0, 4).join(' ')
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
-    <rect width="600" height="400" fill="#F3F4F6" rx="16"/>
-    <text x="300" y="170" text-anchor="middle" fill="#9CA3AF" font-size="72" font-family="sans-serif">🖼️</text>
-    <text x="300" y="240" text-anchor="middle" fill="#D1D5DB" font-size="18" font-family="sans-serif">${words}</text>
-    <text x="300" y="268" text-anchor="middle" fill="#E5E7EB" font-size="13" font-family="sans-serif">Add GEMINI_API_KEY to enable AI images</text>
+    <rect width="600" height="400" fill="#F9FAFB" rx="16"/>
+    <text x="300" y="180" text-anchor="middle" fill="#D1D5DB" font-size="72" font-family="sans-serif">🖼️</text>
+    <text x="300" y="250" text-anchor="middle" fill="#D1D5DB" font-size="16" font-family="sans-serif">${words}</text>
   </svg>`
   return new NextResponse(svg, {
-    headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=300' },
+    headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=60' },
   })
 }

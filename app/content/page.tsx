@@ -19,11 +19,17 @@ const TYPE_COLORS: Record<string, string> = {
 
 // ── Visual Renderers ──────────────────────────────────────────────────────────
 
-function StoryImage({ query, alt }: { query: string; alt: string }) {
+function StoryImage({ query, alt, contentId, childId, index }: {
+  query: string; alt: string
+  contentId?: string; childId?: string; index?: number
+}) {
   const [status, setStatus] = useState<'loading'|'loaded'|'error'>('loading')
 
-  // Route through our Next.js API — uses Gemini Imagen on Vercel (unrestricted network)
-  const src = `/api/images?q=${encodeURIComponent(query)}`
+  const params = new URLSearchParams({ q: query })
+  if (contentId) params.set('cid', contentId)
+  if (childId)   params.set('child', childId)
+  if (index !== undefined) params.set('i', String(index))
+  const src = `/api/images?${params.toString()}`
 
   return (
     <div className="w-full rounded-xl overflow-hidden bg-gray-100 relative" style={{ height: 200 }}>
@@ -57,16 +63,19 @@ function StoryImage({ query, alt }: { query: string; alt: string }) {
   )
 }
 
-// Derive image query from sentence text if image_query not set
+// Derive image query from sentence — use image_query if present, else use full sentence text
 function getImageQuery(s: Record<string, unknown>): string {
   if (s.image_query) return s.image_query as string
-  // Use the full sentence text as the image prompt — AI can interpret it directly
+  // Use the sentence text directly — Gemini handles natural language well
   const text = (s.text as string || '').trim()
-  // Strip child's name placeholder patterns and simplify
   return text.length > 0 ? text : 'child happy safe'
 }
 
-function SocialStoryViewer({ data }: { data: Record<string, unknown> }) {
+function SocialStoryViewer({ data, contentId, childId }: {
+  data: Record<string, unknown>
+  contentId?: string
+  childId?: string
+}) {
   const colour = (data.cover_colour as string) || '#5B7FE8'
   return (
     <div className="space-y-4">
@@ -95,7 +104,9 @@ function SocialStoryViewer({ data }: { data: Record<string, unknown> }) {
               <StoryImage
                 query={getImageQuery(s)}
                 alt={s.text as string}
-                
+                contentId={contentId}
+                childId={childId}
+                index={i}
               />
               {/* Sentence */}
               <div className={`p-3.5 flex items-start gap-3 ${
@@ -542,7 +553,7 @@ function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, revising }:
 
   const renderContent = () => {
     switch (item.content_type) {
-      case 'social_story':   return <SocialStoryViewer data={data} />
+      case 'social_story':   return <SocialStoryViewer data={data} contentId={item.id as string} childId={(item as Record<string, unknown>).child_id as string} />
       case 'activity_pack':  return <ActivityPackViewer data={data} />
       case 'flashcard_set':  return <FlashcardViewer data={data} />
       case 'sensory_card':   return <SensoryViewer data={data} />
