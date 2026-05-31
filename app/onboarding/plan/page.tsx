@@ -102,13 +102,25 @@ function PlanContent() {
       }
 
       if (savedState?.messages && Array.isArray(savedState.messages) && savedState.messages.length > 0) {
-        setMessages((savedState.messages as ChatMessage[]).map(m =>
-          m.role === 'assistant' ? { ...m, content: cleanPlanMessage(m.content) } : m
-        ))
-        if (savedState.state_data && (savedState.state_data as Record<string, unknown>).planData) {
-          setPlanData((savedState.state_data as Record<string, PlanData>).planData)
+        const savedMsgs = savedState.messages as ChatMessage[]
+        // Detect stale "ask for priorities" message — discard and regenerate
+        const isStale = savedMsgs.some(m =>
+          m.role === 'assistant' && (
+            m.content.includes("2-3 things most affecting your family") ||
+            m.content.includes("haven't heard directly from you about") ||
+            m.content.includes("I don't see any parent priorities")
+          )
+        )
+        if (!isStale) {
+          setMessages(savedMsgs.map(m =>
+            m.role === 'assistant' ? { ...m, content: cleanPlanMessage(m.content) } : m
+          ))
+          if (savedState.state_data && (savedState.state_data as Record<string, unknown>).planData) {
+            setPlanData((savedState.state_data as Record<string, PlanData>).planData)
+          }
+          return // Chat already exists — don't regenerate
         }
-        return // Chat already exists — don't regenerate
+        // Stale — fall through to regenerate
       }
 
       // No existing chat — generate fresh
