@@ -22,28 +22,26 @@ const TYPE_COLORS: Record<string, string> = {
 function StoryImage({ query, alt }: { query: string; alt: string }) {
   const [status, setStatus] = useState<'loading'|'loaded'|'error'>('loading')
 
-  // Build a child-friendly, photorealistic prompt for the social story
-  const prompt = encodeURIComponent(
-    `photorealistic, child-friendly illustration: ${query}, warm colours, soft lighting, safe for children, no text, no words`
-  )
-  // Pollinations.ai - free AI image generation, works client-side
-  const src = `https://image.pollinations.ai/prompt/${prompt}?width=600&height=400&nologo=true&seed=${query.length}`
+  // Route through our Next.js API — uses Gemini Imagen on Vercel (unrestricted network)
+  const src = `/api/images?q=${encodeURIComponent(query)}`
 
   return (
     <div className="w-full rounded-xl overflow-hidden bg-gray-100 relative" style={{ height: 200 }}>
       {status === 'loading' && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
-            <div className="flex gap-1"><div className="typing-dot"/><div className="typing-dot"/><div className="typing-dot"/></div>
+            <div className="flex gap-1">
+              <div className="typing-dot"/><div className="typing-dot"/><div className="typing-dot"/>
+            </div>
             <div className="text-xs text-gray-400">Generating image…</div>
           </div>
         </div>
       )}
       {status === 'error' && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-          <div className="text-center text-gray-300">
-            <div className="text-4xl mb-1">🖼️</div>
-            <div className="text-xs">{alt}</div>
+          <div className="text-center">
+            <div className="text-4xl mb-1 text-gray-300">🖼️</div>
+            <div className="text-xs text-gray-400">{alt}</div>
           </div>
         </div>
       )}

@@ -96,7 +96,7 @@ function SocialStoryPrint({ data, title }: { data: Record<string, unknown>; titl
               <div className="w-full overflow-hidden" style={{ height: 220 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={`https://image.pollinations.ai/prompt/${encodeURIComponent('photorealistic child-friendly illustration: ' + ((s.image_query as string) || (s.text as string)) + ', warm colours, soft lighting, no text')}`}
+                  src={`/api/images?q=${encodeURIComponent((s.image_query as string) || (s.text as string))}`}
                   alt={s.text as string}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
