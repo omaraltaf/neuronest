@@ -120,15 +120,75 @@ function PlanContent() {
 
   const generatePlan = async (childData: Child, profileData: ChildProfile) => {
     setGenerating(true)
+
+    // Load all available context — intake, section chats, priority matrix
+    const [
+      { data: intakeSession },
+      { data: sectionChats },
+    ] = await Promise.all([
+      supabase.from('intake_sessions')
+        .select('messages, domain_confidence')
+        .eq('child_id', childId)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase.from('agent_state')
+        .select('agent_type, messages, state_data')
+        .eq('child_id', childId)
+        .like('agent_type', 'profile-review-%'),
+    ])
+
+    // Build priority matrix from profile
+    const profileObj = profileData.profile_data as unknown as Record<string, unknown>
+    const priorityMatrix = profileObj.priority_matrix
+    const rootCauses = profileObj.root_causes
+
+    // Summarise section chat updates (what parents corrected/added)
+    const sectionUpdates = (sectionChats || [])
+      .filter(s => (s.messages as unknown[])?.length > 0)
+      .map(s => {
+        const key = s.agent_type.replace('profile-review-', '')
+        const updatedContent = (s.state_data as Record<string, string>)?.updatedContent
+        return updatedContent ? `${key}: ${updatedContent.slice(0, 300)}` : null
+      })
+      .filter(Boolean)
+      .join('\n\n')
+
+    // Last 20 intake messages as context
+    const intakeContext = intakeSession?.messages
+      ? (intakeSession.messages as { role: string; content: string }[])
+          .slice(-20)
+          .map(m => `${m.role === 'user' ? 'Parent' : 'Dr. Chen'}: ${m.content}`)
+          .join('\n')
+      : ''
+
     const childContext = buildChildContext({
       child: childData as unknown as Record<string, unknown>,
-      profile: profileData.profile_data as unknown as Record<string, unknown>,
+      profile: profileObj,
     })
+
+    const fullContext = `${childContext}
+
+PRIORITY MATRIX (already identified by Dr. Okafor):
+${priorityMatrix ? JSON.stringify(priorityMatrix, null, 2) : 'See profile'}
+
+ROOT CAUSES (identified in profile):
+${rootCauses ? JSON.stringify(rootCauses, null, 2) : 'See profile'}
+
+PARENT CORRECTIONS AND ADDITIONS FROM PROFILE REVIEW:
+${sectionUpdates || 'No corrections made'}
+
+INTAKE INTERVIEW CONTEXT (last exchanges):
+${intakeContext || 'See profile'}
+
+IMPORTANT: The parents have already shared their priorities throughout the interview and profile review above.
+Do NOT ask them again what their priorities are — you have that information.
+Open by acknowledging what you already know about their main concerns, then present the plan.`
 
     const res = await fetch('/api/planning', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ childContext, childName: childData.name, action: 'generate', messages: [] }),
+      body: JSON.stringify({ childContext: fullContext, childName: childData.name, action: 'generate', messages: [] }),
     })
     const { plan, message } = await res.json()
 

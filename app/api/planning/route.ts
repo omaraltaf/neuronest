@@ -72,11 +72,16 @@ If you are only asking a question (no plan yet), output ONLY the question — no
   if (action === 'generate') {
     const userContent = `${childContext}
 
-Please begin the plan generation process for ${childName}.
+Generate a comprehensive personalised intervention plan for ${childName}.
 
-First, ask the parents: "Before I create the plan, I want to make sure I address what matters most to your family. What are the 2-3 things that most affect your daily life right now?"
+CRITICAL: The context above already contains the parent's priorities, the priority matrix, root causes, and everything shared in the interview and profile review. Do NOT ask the parents what their priorities are — you already know them.
 
-Do NOT output a plan yet. Just ask this question conversationally. Wait for their answer before generating the plan.`
+Instead, open with a brief warm acknowledgement like:
+"Based on everything you've shared about ${childName} — including [mention 2-3 specific things from the context like her communication challenges, school transition, social engagement] — I've built a personalised plan that directly addresses these. Here's what I'm proposing:"
+
+Then immediately present the plan using the ---PLAN_JSON--- format.
+
+After presenting, ask: "Does this plan address your main concerns? What feels missing or needs adjusting?"`
 
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
