@@ -19,9 +19,9 @@ const TYPE_COLORS: Record<string, string> = {
 
 // ── Visual Renderers ──────────────────────────────────────────────────────────
 
-function StoryImage({ query, alt, contentId, childId, index }: {
+function StoryImage({ query, alt, contentId, childId, index, styleSeed }: {
   query: string; alt: string
-  contentId?: string; childId?: string; index?: number
+  contentId?: string; childId?: string; index?: number; styleSeed?: string
 }) {
   const [status, setStatus] = useState<'loading'|'loaded'|'error'>('loading')
 
@@ -29,6 +29,7 @@ function StoryImage({ query, alt, contentId, childId, index }: {
   if (contentId) params.set('cid', contentId)
   if (childId)   params.set('child', childId)
   if (index !== undefined) params.set('i', String(index))
+  if (styleSeed) params.set('style', styleSeed)
   const src = `/api/images?${params.toString()}`
 
   return (
@@ -76,6 +77,7 @@ function SocialStoryViewer({ data, contentId, childId }: {
   contentId?: string
   childId?: string
 }) {
+  const styleSeed = (data.style_seed as string) || ''
   const colour = (data.cover_colour as string) || '#5B7FE8'
   return (
     <div className="space-y-4">
@@ -107,6 +109,7 @@ function SocialStoryViewer({ data, contentId, childId }: {
                 contentId={contentId}
                 childId={childId}
                 index={i}
+                styleSeed={styleSeed}
               />
               {/* Sentence */}
               <div className={`p-3.5 flex items-start gap-3 ${

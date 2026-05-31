@@ -27,25 +27,31 @@ Rules:
 - 2:1 ratio: descriptive/perspective sentences to directive sentences
 - Every sentence starts with a relevant emoji
 
-CRITICAL — REAL WORLD IMAGES:
-For each sentence, provide a specific Unsplash search query that will find a real photograph matching the sentence content.
-The image should show real people, real objects, real places — not cartoons or illustrations.
-Examples:
-- "I walk into school" → "child walking through school door"
-- "My teacher says good morning" → "friendly teacher greeting child classroom"
-- "I sit at my desk" → "child sitting at school desk"
-- "When I feel worried I take a deep breath" → "child taking deep breath calm"
-Keep queries specific, child-friendly, and focused on the main subject of the sentence.
+CRITICAL — VISUAL CONSISTENCY:
+The story needs a STYLE SEED that defines the visual world of this story.
+Choose ONE consistent setting, ONE consistent lighting style, and ONE colour palette.
+Every image_query must reference the same visual style so all photos look like they belong together.
+
+Example style seeds:
+- "bright indoor classroom, natural window light, warm tones"
+- "sunny outdoor playground, golden hour light, soft focus"  
+- "cozy home living room, soft lamp light, earth tones"
+
+For each sentence, write an image_query that:
+1. Describes the specific action/scene in the sentence
+2. ENDS WITH the style seed (so all images share the same visual world)
+3. Uses photographic language: "candid photo of...", "natural light...", "shallow depth of field"
 
 Return JSON:
 {
   "title": "story title",
+  "style_seed": "the consistent visual style for all images in this story",
   "sentences": [
     {
       "emoji": "🏫",
       "text": "sentence here",
       "type": "descriptive|perspective|directive",
-      "image_query": "specific unsplash search query for a real photograph"
+      "image_query": "specific photographic description + style seed"
     }
   ],
   "cover_emoji": "🌟",

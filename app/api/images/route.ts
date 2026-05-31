@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET(req: NextRequest) {
   const query     = req.nextUrl.searchParams.get('q') || 'child happy'
+  const styleSeed = req.nextUrl.searchParams.get('style') || ''
   const contentId = req.nextUrl.searchParams.get('cid') || ''
   const index     = req.nextUrl.searchParams.get('i') || '0'
   const childId   = req.nextUrl.searchParams.get('child') || ''
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
   }
 
   // ── 2. Generate with Gemini Imagen 3 ────────────────────────────────────────
-  const safePrompt = buildPrompt(query)
+  const safePrompt = buildPrompt(query, styleSeed)
 
   // Try Imagen 3 first, fall back to Imagen 2 if rejected
   let base64 = await generateWithGemini(safePrompt, 'imagen-3.0-generate-002', GEMINI_KEY)
@@ -80,14 +81,18 @@ export async function GET(req: NextRequest) {
   })
 }
 
-function buildPrompt(query: string): string {
+function buildPrompt(query: string, styleSeed?: string): string {
   const cleaned = query
     .replace(/\b[A-Z][a-z]+\b/g, 'a child')
     .replace(/\bI\b/g, 'a child')
     .replace(/\bmy\b/gi, 'the')
     .slice(0, 200)
 
-  return `Real photograph, DSLR camera, natural daylight: ${cleaned}. NOT cartoon, NOT illustration, NOT drawing, NOT animated. Real people, real location, photographic realism. Warm natural light, child-safe positive scene. No text in image.`
+  const styleContext = styleSeed
+    ? `Consistent visual style: ${styleSeed}. `
+    : ''
+
+  return `Real photograph, DSLR camera: ${styleContext}${cleaned}. NOT cartoon, NOT illustration, NOT drawing, NOT animated. Real people, photographic realism, candid moment. Child-safe positive scene. No text in image.`
 }
 
 
