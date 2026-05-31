@@ -349,7 +349,8 @@ function ProfileContent() {
         await runDocumentEnrichment(unenrichedDocs, profileToUse, childData, enrichedIds)
       } else {
         setEnrichmentPhase('done')
-        buildSections(profileToUse.profile_data, childData.name)
+        // Build sections first, then restore saved chat history and confirmed state
+        await buildAndRestoreSections(profileToUse.profile_data, childData.name)
       }
     }
     load()
@@ -391,7 +392,7 @@ function ProfileContent() {
     if (!comparison) {
       // Comparison failed — skip to profile
       setEnrichmentPhase('done')
-      buildSections((profile.profile_data as Record<string, unknown>), childData.name as string)
+      await buildAndRestoreSections(profile.profile_data as Record<string, unknown>, childData.name as string)
       return
     }
 
@@ -560,30 +561,72 @@ function ProfileContent() {
     const currentProfile = await supabase.from('child_profiles')
       .select('*').eq('child_id', childId).eq('is_current', true).maybeSingle()
     if (currentProfile.data) {
-      buildSections(currentProfile.data.profile_data, child?.name || '')
+      await buildAndRestoreSections(currentProfile.data.profile_data, child?.name || '')
     }
   }
 
+  const SECTION_DEFS = (childName: string) => [
+    { key: 'snapshot',        title: `${childName} — Overview`,   icon: '🌟', color: '#7C3AED' },
+    { key: 'communication',   title: 'Communication Profile',     icon: '💬', color: '#E8635A' },
+    { key: 'social',          title: 'Social Profile',            icon: '🤝', color: '#5B7FE8' },
+    { key: 'sensory',         title: 'Sensory Profile',           icon: '🌀', color: '#7C3AED' },
+    { key: 'behaviour',       title: 'Behaviour & Regulation',    icon: '⚖️', color: '#D97706' },
+    { key: 'cognition',       title: 'Cognitive Profile',         icon: '🧩', color: '#0891B2' },
+    { key: 'motor',           title: 'Motor Profile',             icon: '🏃', color: '#16A34A' },
+    { key: 'strength_map',    title: 'Strength Map',              icon: '💪', color: '#059669' },
+    { key: 'family_context',  title: 'Family Context',            icon: '🏠', color: '#DB2777' },
+    { key: 'priority_matrix', title: 'Priority Areas',            icon: '🎯', color: '#E8635A' },
+  ]
+
   const buildSections = (profile: Record<string, unknown>, name?: string) => {
     const childName = name || child?.name || 'Your child'
-    const defs = [
-      { key: 'snapshot',        title: `${childName} — Overview`,   icon: '🌟', color: '#7C3AED' },
-      { key: 'communication',   title: 'Communication Profile',     icon: '💬', color: '#E8635A' },
-      { key: 'social',          title: 'Social Profile',            icon: '🤝', color: '#5B7FE8' },
-      { key: 'sensory',         title: 'Sensory Profile',           icon: '🌀', color: '#7C3AED' },
-      { key: 'behaviour',       title: 'Behaviour & Regulation',    icon: '⚖️', color: '#D97706' },
-      { key: 'cognition',       title: 'Cognitive Profile',         icon: '🧩', color: '#0891B2' },
-      { key: 'motor',           title: 'Motor Profile',             icon: '🏃', color: '#16A34A' },
-      { key: 'strength_map',    title: 'Strength Map',              icon: '💪', color: '#059669' },
-      { key: 'family_context',  title: 'Family Context',            icon: '🏠', color: '#DB2777' },
-      { key: 'priority_matrix', title: 'Priority Areas',            icon: '🎯', color: '#E8635A' },
-    ]
-    setSections(defs.map(def => ({
+    setSections(SECTION_DEFS(childName).map(def => ({
       ...def,
       content: formatSection(def.key, profile[def.key]),
       confirmed: false,
       chatMessages: [],
     })))
+  }
+
+  // Build sections AND restore all saved chats + confirmed state from DB
+  const buildAndRestoreSections = async (profile: Record<string, unknown>, name?: string) => {
+    const childName = name || child?.name || 'Your child'
+    const defs = SECTION_DEFS(childName)
+
+    // Load all section agent_state records in parallel
+    const chatResults = await Promise.all(
+      defs.map(def =>
+        supabase.from('agent_state')
+          .select('messages, state_data')
+          .eq('child_id', childId)
+          .eq('agent_type', `profile-review-${def.key}`)
+          .maybeSingle()
+      )
+    )
+
+    const restoredSections: ProfileSection[] = defs.map((def, i) => {
+      const saved = chatResults[i].data
+      const savedMessages = (saved?.messages as ChatMessage[]) || []
+      const savedContent = saved?.state_data
+        ? (saved.state_data as Record<string, string>).updatedContent
+        : null
+
+      // A section is confirmed if it has chat history (parent interacted with it)
+      // OR if it has saved updated content
+      const hasChat = savedMessages.length > 0
+      const isConfirmed = hasChat  // sections with chat were reviewed by parent
+
+      return {
+        ...def,
+        content: savedContent || formatSection(def.key, profile[def.key]),
+        confirmed: isConfirmed,
+        chatMessages: savedMessages,
+      }
+    })
+
+    setSections(restoredSections)
+    const allDone = restoredSections.every(s => s.confirmed)
+    setAllConfirmed(allDone)
   }
 
   const handleUpdateContent = (key: string, newContent: string, chatMessages: ChatMessage[]) => {
@@ -638,7 +681,7 @@ function ProfileContent() {
     }).select().single()
 
     if (saved) setProfileId(saved.id)
-    buildSections(profile, childData.name)
+    await buildAndRestoreSections(profile, childData.name)
     setGenerating(false)
   }
 
