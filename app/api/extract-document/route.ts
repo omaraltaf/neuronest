@@ -10,6 +10,7 @@ Extract the following where present:
   "child_dob": "...",
   "assessment_date": "...",
   "assessor": "...",
+  "organisation": "...",
   "diagnosis": "...",
   "diagnosis_level": "Level 1|2|3|unspecified",
   "scores": {
@@ -30,22 +31,113 @@ Extract the following where present:
   "motor_summary": "...",
   "cognitive_summary": "...",
   "strengths": ["..."],
-  "recommendations": ["..."],
-  "current_support": ["..."],
+  "recommendations": ["all recommendations listed in the document"],
+  "current_support": ["support currently in place"],
+  "hours_per_week": "...",
+  "school_placement": "...",
+  "iop_goals": ["goals listed in IOP if present"],
   "medical_notes": "...",
-  "key_findings": "..."
+  "key_findings": "A comprehensive summary of all key findings from this document"
 }
 
-Return ONLY valid JSON, no markdown, no explanation. Use null for fields not present in the document.`
+Be thorough — extract ALL recommendations, goals, and findings. 
+Return ONLY valid JSON, no markdown, no explanation. Use null for fields not present.`
 
 export async function POST(req: NextRequest) {
-  const { documentText, documentUrl, fileName, childName } = await req.json()
-
-  const userContent = documentText
-    ? `Please extract structured clinical information from this document about ${childName || 'the child'}:\n\n${documentText}`
-    : `The document "${fileName}" has been uploaded but its text content could not be extracted automatically. Based on the filename and any context available, please provide a minimal extraction with doc_type identified where possible.`
+  const { fileUrl, fileName, fileBase64, fileMediaType } = await req.json()
 
   try {
+    let messageContent: unknown[]
+
+    if (fileBase64 && fileMediaType) {
+      // Direct base64 upload — preferred path
+      const isImage = fileMediaType.startsWith('image/')
+      const isPdf = fileMediaType === 'application/pdf'
+
+      if (isPdf) {
+        messageContent = [
+          {
+            type: 'document',
+            source: {
+              type: 'base64',
+              media_type: 'application/pdf',
+              data: fileBase64,
+            },
+          },
+          {
+            type: 'text',
+            text: `Please extract all clinical information from this document (${fileName}). Return complete JSON as instructed.`,
+          },
+        ]
+      } else if (isImage) {
+        messageContent = [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: fileMediaType,
+              data: fileBase64,
+            },
+          },
+          {
+            type: 'text',
+            text: `Please extract all clinical information from this document image (${fileName}). Return complete JSON as instructed.`,
+          },
+        ]
+      } else {
+        // Unknown type — treat as text
+        messageContent = [{
+          type: 'text',
+          text: `Document: ${fileName}\n\nPlease extract what you can from the filename and return structured JSON.`,
+        }]
+      }
+    } else if (fileUrl) {
+      // Fallback: try to fetch the file content from the URL
+      try {
+        const fileRes = await fetch(fileUrl)
+        const arrayBuffer = await fileRes.arrayBuffer()
+        const base64 = Buffer.from(arrayBuffer).toString('base64')
+        const contentType = fileRes.headers.get('content-type') || 'application/pdf'
+        const isPdf = contentType.includes('pdf')
+        const isImage = contentType.startsWith('image/')
+
+        if (isPdf) {
+          messageContent = [
+            {
+              type: 'document',
+              source: { type: 'base64', media_type: 'application/pdf', data: base64 },
+            },
+            { type: 'text', text: `Extract all clinical information from this document (${fileName}).` },
+          ]
+        } else if (isImage) {
+          const mediaType = contentType.startsWith('image/jpeg') ? 'image/jpeg' :
+                           contentType.startsWith('image/png') ? 'image/png' : 'image/jpeg'
+          messageContent = [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: mediaType, data: base64 },
+            },
+            { type: 'text', text: `Extract all clinical information from this document image (${fileName}).` },
+          ]
+        } else {
+          throw new Error('Unsupported file type')
+        }
+      } catch {
+        // URL fetch failed — return minimal extraction
+        return NextResponse.json({
+          extracted: {
+            key_findings: `Document uploaded: ${fileName}. Text content could not be extracted automatically — please review manually.`,
+            doc_type: 'other',
+            assessment_date: new Date().toISOString().split('T')[0],
+          }
+        })
+      }
+    } else {
+      return NextResponse.json({
+        extracted: { key_findings: `No file content provided for ${fileName}`, doc_type: 'other' }
+      })
+    }
+
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -55,9 +147,9 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
+        max_tokens: 2000,
         system: EXTRACTION_PROMPT,
-        messages: [{ role: 'user', content: userContent }],
+        messages: [{ role: 'user', content: messageContent }],
       }),
     })
 

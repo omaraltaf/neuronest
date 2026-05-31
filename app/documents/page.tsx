@@ -83,12 +83,23 @@ function DocumentsContent() {
       if (!docRecord) continue
       await fetchDocs()
 
-      // Extract document data
+      // Extract document data — send as base64 directly to Claude
       setProcessingId(docRecord.id)
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve((reader.result as string).split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
       const extractRes = await fetch('/api/extract-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentUrl: fileUrl, fileName: file.name }),
+        body: JSON.stringify({
+          fileBase64: base64,
+          fileMediaType: file.type || 'application/pdf',
+          fileName: file.name,
+          fileUrl: fileUrl,
+        }),
       })
       const { extracted } = await extractRes.json()
 

@@ -77,22 +77,33 @@ function UploadContent() {
           processing_status: 'processing',
         }).select().single()
 
-        // Trigger background extraction
+        // Trigger extraction — read file as base64 and send directly to Claude
         if (docRecord) {
-          fetch('/api/extract-document', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ documentUrl: fileUrl, fileName: file.name }),
-          }).then(async r => {
-            const { extracted } = await r.json()
-            await supabase.from('documents').update({
-              extracted_data: extracted,
-              processing_status: 'complete',
-              processed_at: new Date().toISOString(),
-            }).eq('id', docRecord.id)
-          }).catch(() => {
-            supabase.from('documents').update({ processing_status: 'failed' }).eq('id', docRecord.id)
-          })
+          const reader = new FileReader()
+          reader.onload = async () => {
+            try {
+              const base64 = (reader.result as string).split(',')[1]
+              const mediaType = file.type || 'application/pdf'
+              const { extracted } = await fetch('/api/extract-document', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  fileBase64: base64,
+                  fileMediaType: mediaType,
+                  fileName: file.name,
+                  fileUrl: fileUrl,
+                }),
+              }).then(r => r.json())
+              await supabase.from('documents').update({
+                extracted_data: extracted,
+                processing_status: 'complete',
+                processed_at: new Date().toISOString(),
+              }).eq('id', docRecord.id)
+            } catch {
+              await supabase.from('documents').update({ processing_status: 'failed' }).eq('id', docRecord.id)
+            }
+          }
+          reader.readAsDataURL(file)
         }
 
         setFiles(prev => prev.map(f => f.name === file.name ? { ...f, status: 'done' } : f))
