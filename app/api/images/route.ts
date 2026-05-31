@@ -1,104 +1,81 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+export const runtime = 'nodejs'
+
 export async function GET(req: NextRequest) {
   const query     = req.nextUrl.searchParams.get('q') || 'child happy'
   const styleSeed = req.nextUrl.searchParams.get('style') || ''
   const contentId = req.nextUrl.searchParams.get('cid') || ''
   const index     = req.nextUrl.searchParams.get('i') || '0'
   const childId   = req.nextUrl.searchParams.get('child') || ''
+  const isDebug   = !!req.nextUrl.searchParams.get('debug')
   const GEMINI_KEY = process.env.GEMINI_API_KEY
 
-  if (!GEMINI_KEY || GEMINI_KEY === 'your_gemini_api_key_here') {
-    return svgPlaceholder(query)
+  if (isDebug) {
+    return NextResponse.json({
+      status: 'reached',
+      query,
+      geminiKeyPresent: !!GEMINI_KEY,
+      geminiKeyPrefix: GEMINI_KEY?.slice(0, 15) || 'NOT SET',
+      geminiKeyLength: GEMINI_KEY?.length || 0,
+      env: process.env.NODE_ENV,
+    })
   }
 
-  // ── 1. Check cache first ────────────────────────────────────────────────────
+  if (!GEMINI_KEY) return svgPlaceholder(query)
+
+  // ── 1. Check cache ──────────────────────────────────────────────────────────
   if (contentId && childId) {
-    const supabase = createClient()
-    const { data: cached } = await supabase
-      .from('story_images')
-      .select('storage_path')
-      .eq('content_id', contentId)
-      .eq('sentence_index', parseInt(index))
-      .maybeSingle()
+    try {
+      const supabase = createClient()
+      const { data: cached } = await supabase
+        .from('story_images')
+        .select('storage_path')
+        .eq('content_id', contentId)
+        .eq('sentence_index', parseInt(index))
+        .maybeSingle()
 
-    if (cached?.storage_path) {
-      const { data: { publicUrl } } = supabase.storage
-        .from('neuronest-documents')
-        .getPublicUrl(cached.storage_path)
-
-      // Redirect to the cached image in Supabase Storage
-      return NextResponse.redirect(publicUrl, { status: 302 })
+      if (cached?.storage_path) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('neuronest-documents')
+          .getPublicUrl(cached.storage_path)
+        return NextResponse.redirect(publicUrl, { status: 302 })
+      }
+    } catch (e) {
+      console.error('Cache check error:', e)
     }
   }
 
-  // ── 2. Generate image ───────────────────────────────────────────────────────
-  const safePrompt = buildPrompt(query, styleSeed)
-  const OPENAI_KEY = process.env.OPENAI_API_KEY
-
+  // ── 2. Generate ─────────────────────────────────────────────────────────────
+  const prompt = buildPrompt(query, styleSeed)
   let base64: string | null = null
 
-  // Try Gemini Imagen
-  if (GEMINI_KEY) {
-    base64 = await generateWithGemini(safePrompt, 'imagen-3.0-generate-002', GEMINI_KEY)
-    if (!base64) {
-      base64 = await generateWithGemini(safePrompt, 'imagen-3.0-fast-generate-001', GEMINI_KEY)
-    }
-  }
+  base64 = await tryGemini(prompt, 'imagen-3.0-generate-002', GEMINI_KEY)
+  if (!base64) base64 = await tryGemini(prompt, 'imagen-3.0-fast-generate-001', GEMINI_KEY)
 
-  // Fall back to DALL-E 3 if Gemini failed or unavailable
-  if (!base64 && OPENAI_KEY && OPENAI_KEY !== 'your_openai_api_key_here') {
-    base64 = await generateWithDallE(safePrompt, OPENAI_KEY)
-  }
+  if (!base64) return svgPlaceholder(query)
 
-  if (!base64) {
-    if (req.nextUrl.searchParams.get('debug')) {
-      return NextResponse.json({
-        error: 'No image generated',
-        geminiKeyPresent: !!GEMINI_KEY,
-        geminiKeyPrefix: GEMINI_KEY?.slice(0, 15) || 'missing',
-        openaiKeyPresent: !!(OPENAI_KEY && OPENAI_KEY !== 'your_openai_api_key_here'),
-        prompt: safePrompt,
-      })
-    }
-    return svgPlaceholder(query)
-  }
-
-  // ── 3. Save to Supabase Storage so it's never regenerated ──────────────────
+  // ── 3. Cache ────────────────────────────────────────────────────────────────
   if (contentId && childId) {
     try {
       const supabase = createClient()
       const buffer = Buffer.from(base64, 'base64')
       const storagePath = `story-images/${childId}/${contentId}/${index}.png`
-
-      await supabase.storage
-        .from('neuronest-documents')
-        .upload(storagePath, buffer, {
-          contentType: 'image/png',
-          upsert: true,
-        })
-
+      await supabase.storage.from('neuronest-documents').upload(storagePath, buffer, {
+        contentType: 'image/png', upsert: true,
+      })
       await supabase.from('story_images').upsert({
-        child_id: childId,
-        content_id: contentId,
-        sentence_index: parseInt(index),
-        prompt: safePrompt,
-        storage_path: storagePath,
+        child_id: childId, content_id: contentId,
+        sentence_index: parseInt(index), prompt, storage_path: storagePath,
       }, { onConflict: 'content_id,sentence_index' })
-    } catch (err) {
-      console.error('Failed to cache image:', err)
-      // Continue — still return the image even if caching fails
+    } catch (e) {
+      console.error('Cache save error:', e)
     }
   }
 
-  // ── 4. Return the generated image ──────────────────────────────────────────
-  const buffer = Buffer.from(base64, 'base64')
-  return new NextResponse(buffer, {
-    headers: {
-      'Content-Type': 'image/png',
-      'Cache-Control': 'public, max-age=2592000', // 30 days
-    },
+  return new NextResponse(Buffer.from(base64, 'base64'), {
+    headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=2592000' },
   })
 }
 
@@ -109,26 +86,17 @@ function buildPrompt(query: string, styleSeed?: string): string {
     .replace(/\bmy\b/gi, 'the')
     .slice(0, 200)
 
-  const styleContext = styleSeed
-    ? `Consistent visual style: ${styleSeed}. `
-    : ''
-
-  return `Real photograph, DSLR camera: ${styleContext}${cleaned}. NOT cartoon, NOT illustration, NOT drawing, NOT animated. Real people, photographic realism, candid moment. Child-safe positive scene. No text in image.`
+  const style = styleSeed ? `Consistent visual style: ${styleSeed}. ` : ''
+  return `Real photograph, DSLR camera, natural daylight: ${style}${cleaned}. NOT cartoon, NOT illustration, NOT drawing, NOT animated. Real people, photographic realism. Child-safe positive scene. No text in image.`
 }
 
-
-async function generateWithGemini(
-  prompt: string,
-  model: string,
-  apiKey: string
-): Promise<string | null> {
-  // Try both v1 and v1beta — key type determines which works
-  const endpoints = [
+async function tryGemini(prompt: string, model: string, apiKey: string): Promise<string | null> {
+  const urls = [
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`,
     `https://generativelanguage.googleapis.com/v1/models/${model}:predict?key=${apiKey}`,
   ]
 
-  for (const url of endpoints) {
+  for (const url of urls) {
     try {
       const res = await fetch(url, {
         method: 'POST',
@@ -140,24 +108,20 @@ async function generateWithGemini(
             aspectRatio: '4:3',
             safetySetting: 'block_only_high',
             personGeneration: 'allow_all',
-            negativePrompt: 'cartoon, illustration, drawing, anime, sketch, painting, watercolor, digital art, 3d render, CGI, clipart, vector art, animated',
+            negativePrompt: 'cartoon, illustration, drawing, anime, sketch, painting, watercolor, digital art, 3d render, CGI, animated',
           },
         }),
       })
-
-      const responseText = await res.text()
-
+      const text = await res.text()
       if (!res.ok) {
-        console.error(`Gemini ${model} ${url.includes('v1beta') ? 'v1beta' : 'v1'} error ${res.status}:`, responseText.slice(0, 500))
-        continue // try next endpoint
+        console.error(`Gemini ${model} ${res.status}:`, text.slice(0, 400))
+        continue
       }
-
-      const data = JSON.parse(responseText)
+      const data = JSON.parse(text)
       const b64 = data?.predictions?.[0]?.bytesBase64Encoded
       if (b64) return b64
-
-    } catch (err) {
-      console.error(`Gemini ${model} exception:`, err)
+    } catch (e) {
+      console.error(`Gemini ${model} exception:`, e)
     }
   }
   return null
@@ -167,34 +131,23 @@ async function generateWithDallE(prompt: string, apiKey: string): Promise<string
   try {
     const res = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'dall-e-3',
-        prompt,
-        n: 1,
-        size: '1024x768',
-        response_format: 'b64_json',
-        quality: 'standard',
-        style: 'natural',  // 'natural' = more realistic, 'vivid' = more artistic
+        model: 'dall-e-3', prompt, n: 1, size: '1024x768',
+        response_format: 'b64_json', quality: 'standard', style: 'natural',
       }),
     })
-
-    if (!res.ok) {
-      const err = await res.text()
-      console.error('DALL-E error:', res.status, err.slice(0, 300))
-      return null
-    }
-
+    if (!res.ok) { console.error('DALL-E error:', res.status); return null }
     const data = await res.json()
     return data?.data?.[0]?.b64_json || null
-  } catch (err) {
-    console.error('DALL-E exception:', err)
+  } catch (e) {
+    console.error('DALL-E exception:', e)
     return null
   }
 }
+
+// Keep reference so TypeScript doesn't complain about unused function
+void generateWithDallE
 
 function svgPlaceholder(label: string) {
   const words = label.replace(/\b[A-Z][a-z]+\b/g, '').trim().split(' ').slice(0, 4).join(' ')
