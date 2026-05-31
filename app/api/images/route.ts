@@ -81,18 +81,15 @@ export async function GET(req: NextRequest) {
 }
 
 function buildPrompt(query: string): string {
-  // Strip child names and personal identifiers — Gemini blocks named individuals
   const cleaned = query
-    .replace(/\b[A-Z][a-z]+\b/g, 'the child') // Replace proper nouns
-    .replace(/\bI\b/g, 'the child')
-    .replace(/\bmy\b/gi, 'the child\'s')
+    .replace(/\b[A-Z][a-z]+\b/g, 'a child')
+    .replace(/\bI\b/g, 'a child')
+    .replace(/\bmy\b/gi, 'the')
     .slice(0, 200)
 
-  return `Children's picture book illustration, photorealistic style, warm soft lighting: ${cleaned}.
-Safe, positive, child-friendly. No text, no words, no letters in the image.
-Style: gentle realistic illustration like a high-quality children's book.
-Composition: clear subject, bright colours, friendly atmosphere.`
+  return `Real photograph, DSLR camera, natural daylight: ${cleaned}. NOT cartoon, NOT illustration, NOT drawing, NOT animated. Real people, real location, photographic realism. Warm natural light, child-safe positive scene. No text in image.`
 }
+
 
 async function generateWithGemini(
   prompt: string,
@@ -112,6 +109,7 @@ async function generateWithGemini(
             aspectRatio: '4:3',
             safetySetting: 'block_only_high',
             personGeneration: 'allow_all',
+            negativePrompt: 'cartoon, illustration, drawing, anime, sketch, painting, watercolor, digital art, 3d render, CGI, clipart, vector art, animated',
           },
         }),
       }
