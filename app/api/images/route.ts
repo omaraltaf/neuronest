@@ -10,12 +10,17 @@ export async function GET(req: NextRequest) {
 
   // Debug endpoint — no dependencies, just env check
   if (isDebug) {
+    // Test Gemini directly and return full response
+    const prompt = buildPrompt(query, '')
+    const testResult = await testGemini(prompt, GEMINI_KEY || '')
     return NextResponse.json({
       ok: true,
       query,
       geminiKeyPresent: !!GEMINI_KEY,
       geminiKeyPrefix: GEMINI_KEY?.slice(0, 12) || 'NOT SET',
       geminiKeyLength: GEMINI_KEY?.length || 0,
+      prompt,
+      geminiResult: testResult,
     })
   }
 
@@ -64,6 +69,34 @@ export async function GET(req: NextRequest) {
       'Cache-Control': 'public, max-age=2592000',
     },
   })
+}
+
+async function testGemini(prompt: string, key: string) {
+  const models = ['imagen-3.0-generate-002', 'imagen-3.0-fast-generate-001']
+  const versions = ['v1beta', 'v1']
+  const results: Record<string, unknown>[] = []
+  for (const model of models) {
+    for (const v of versions) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/${v}/models/${model}:predict?key=${key}`
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            instances: [{ prompt }],
+            parameters: { sampleCount: 1, aspectRatio: '4:3', safetySetting: 'block_only_high', personGeneration: 'allow_all' },
+          }),
+        })
+        const text = await res.text()
+        const hasImage = text.includes('bytesBase64Encoded')
+        results.push({ model, version: v, status: res.status, hasImage, response: text.slice(0, 500) })
+        if (hasImage) return results // stop on first success
+      } catch (e) {
+        results.push({ model, version: v, error: String(e) })
+      }
+    }
+  }
+  return results
 }
 
 function buildPrompt(query: string, style: string): string {
