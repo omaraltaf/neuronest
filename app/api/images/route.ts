@@ -122,7 +122,7 @@ function buildPrompt(query: string, style: string): string {
 }
 
 async function tryGemini(prompt: string, key: string): Promise<string | null> {
-  const models = ['imagen-4.0-generate-001', 'imagen-4.0-fast-generate-001', 'imagen-4.0-ultra-generate-001']
+  const models = ['imagen-4.0-fast-generate-001', 'imagen-4.0-generate-001']
   const versions = ['v1beta', 'v1']
   for (const model of models) {
     for (const v of versions) {
