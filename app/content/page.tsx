@@ -24,13 +24,42 @@ function StoryImage({ query, alt, contentId, childId, index, styleSeed }: {
   contentId?: string; childId?: string; index?: number; styleSeed?: string
 }) {
   const [status, setStatus] = useState<'loading'|'loaded'|'error'>('loading')
+  const [src, setSrc] = useState<string | null>(null)
 
-  const params = new URLSearchParams({ q: query })
-  if (contentId) params.set('cid', contentId)
-  if (childId)   params.set('child', childId)
-  if (index !== undefined) params.set('i', String(index))
-  if (styleSeed) params.set('style', styleSeed)
-  const src = `/api/images?${params.toString()}`
+  useEffect(() => {
+    const GEMINI_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY
+    if (!GEMINI_KEY) { setStatus('error'); return }
+
+    const style = styleSeed ? `Consistent visual style: ${styleSeed}. ` : ''
+    const cleaned = query.replace(/\b[A-Z][a-z]+\b/g, 'a child').replace(/\bI\b/g, 'a child').slice(0, 200)
+    const prompt = `Real photograph, DSLR camera, natural daylight: ${style}${cleaned}. NOT cartoon. Real people, photographic realism. Child-safe. No text in image.`
+
+    const generate = async () => {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              instances: [{ prompt }],
+              parameters: { sampleCount: 1, aspectRatio: '4:3', safetySetting: 'block_only_high', personGeneration: 'allow_all' },
+            }),
+          }
+        )
+        if (!res.ok) { setStatus('error'); return }
+        const data = await res.json()
+        const b64 = data?.predictions?.[0]?.bytesBase64Encoded
+        if (b64) {
+          setSrc(`data:image/png;base64,${b64}`)
+          setStatus('loaded')
+        } else {
+          setStatus('error')
+        }
+      } catch { setStatus('error') }
+    }
+    generate()
+  }, [query, styleSeed]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="w-full rounded-xl overflow-hidden bg-gray-100 relative" style={{ height: 200 }}>
@@ -53,13 +82,11 @@ function StoryImage({ query, alt, contentId, childId, index, styleSeed }: {
         </div>
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      {src && <img
         src={src}
         alt={alt}
-        style={{ width: '100%', height: '100%', objectFit: 'cover', display: status === 'loaded' ? 'block' : 'none' }}
-        onLoad={() => setStatus('loaded')}
-        onError={() => setStatus('error')}
-      />
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      />}
     </div>
   )
 }
