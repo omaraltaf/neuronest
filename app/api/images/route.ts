@@ -110,21 +110,25 @@ async function testAll(query: string, geminiKey?: string, hfKey?: string) {
   const prompt = buildPrompt(query, '')
 
   if (geminiKey) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            instances: [{ prompt }],
-            parameters: { sampleCount: 1, aspectRatio: '4:3', safetySetting: 'block_low_and_above', personGeneration: 'allow_all' },
-          }),
-        }
-      )
-      const text = await res.text()
-      results.push({ service: 'Imagen 4', status: res.status, hasImage: text.includes('bytesBase64Encoded'), response: text.slice(0, 300) })
-    } catch (e) { results.push({ service: 'Imagen 4', error: String(e) }) }
+    // Try all Imagen models
+    for (const model of ['imagen-4.0-generate-001', 'imagen-4.0-fast-generate-001', 'imagen-4.0-ultra-generate-001']) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              instances: [{ prompt }],
+              parameters: { sampleCount: 1, aspectRatio: '4:3', safetySetting: 'block_low_and_above', personGeneration: 'allow_all' },
+            }),
+          }
+        )
+        const text = await res.text()
+        results.push({ service: model, status: res.status, hasImage: text.includes('bytesBase64Encoded'), response: text.slice(0, 200) })
+        if (text.includes('bytesBase64Encoded')) break
+      } catch (e) { results.push({ service: model, error: String(e) }) }
+    }
   }
 
   if (hfKey) {
