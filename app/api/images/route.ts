@@ -15,8 +15,17 @@ export async function GET(req: NextRequest) {
   const HF_KEY     = process.env.HF_API_KEY
 
   if (isDebug) {
+    // Also fetch the project info to see which project this key belongs to
+    let projectInfo = 'unknown'
+    if (GEMINI_KEY) {
+      try {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_KEY}&pageSize=5`)
+        const d = await r.json()
+        projectInfo = JSON.stringify({ status: r.status, models: (d.models || []).map((m: {name: string}) => m.name).slice(0, 3) })
+      } catch {}
+    }
     const result = await testAll(query, GEMINI_KEY, HF_KEY)
-    return NextResponse.json({ query, geminiKey: GEMINI_KEY?.slice(0, 12), hfKey: !!HF_KEY, result })
+    return NextResponse.json({ query, geminiKey: GEMINI_KEY?.slice(0, 12), hfKey: !!HF_KEY, projectInfo, result })
   }
 
   const prompt = buildPrompt(query, styleSeed)
@@ -156,3 +165,4 @@ function svgPlaceholder(label: string) {
     { headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=60' } }
   )
 }
+// Mon Jun  1 21:45:36 UTC 2026
