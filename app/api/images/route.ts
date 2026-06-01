@@ -83,26 +83,22 @@ async function testGemini(prompt: string, key: string) {
   } catch {}
 
   // Try each model
-  const models = [
-    'imagen-4.0-fast-generate-001',
-    'imagen-4.0-generate-001',
-    'imagen-4.0-ultra-generate-001',
-  ]
+  const models = ['gemini-2.5-flash-preview-05-20', 'gemini-2.0-flash-exp']
   const results: Record<string, unknown>[] = [{ availableImageModels: availableModels }]
   for (const model of models) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${key}`
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instances: [{ prompt }],
-          parameters: { sampleCount: 1, aspectRatio: '4:3', safetySetting: 'block_low_and_above', personGeneration: 'allow_all' },
+          contents: [{ parts: [{ text: `Generate an image: ${prompt}` }] }],
+          generationConfig: { responseModalities: ['image', 'text'], responseMimeType: 'image/png' },
         }),
       })
       const text = await res.text()
-      const hasImage = text.includes('bytesBase64Encoded')
-      results.push({ model, status: res.status, hasImage, response: text.slice(0, 400) })
+      const hasImage = text.includes('inlineData')
+      results.push({ model, status: res.status, hasImage, response: text.slice(0, 500) })
       if (hasImage) return results
     } catch (e) {
       results.push({ model, error: String(e) })
@@ -122,37 +118,38 @@ function buildPrompt(query: string, style: string): string {
 }
 
 async function tryGemini(prompt: string, key: string): Promise<string | null> {
-  const models = ['imagen-4.0-fast-generate-001', 'imagen-4.0-generate-001']
-  const versions = ['v1beta', 'v1']
+  // Use Gemini 2.5 Flash image generation (free tier) via generateContent API
+  const models = ['gemini-2.5-flash-preview-05-20', 'gemini-2.0-flash-exp']
+
   for (const model of models) {
-    for (const v of versions) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/${v}/models/${model}:predict?key=${key}`
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            instances: [{ prompt }],
-            parameters: {
-              sampleCount: 1,
-              aspectRatio: '4:3',
-              safetySetting: 'block_low_and_above',
-              personGeneration: 'allow_all',
-              negativePrompt: 'cartoon, illustration, drawing, anime, animated, digital art',
-            },
-          }),
-        })
-        const text = await res.text()
-        if (!res.ok) {
-          console.error(`Gemini ${model}/${v} ${res.status}:`, text.slice(0, 300))
-          continue
-        }
-        const data = JSON.parse(text)
-        const b64 = data?.predictions?.[0]?.bytesBase64Encoded
-        if (b64) return b64
-      } catch (e) {
-        console.error(`Gemini ${model}/${v} exception:`, e)
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: `Generate an image: ${prompt}` }]
+          }],
+          generationConfig: {
+            responseModalities: ['image', 'text'],
+            responseMimeType: 'image/png',
+          },
+        }),
+      })
+      const text = await res.text()
+      if (!res.ok) {
+        console.error(`Gemini ${model} ${res.status}:`, text.slice(0, 300))
+        continue
       }
+      const data = JSON.parse(text)
+      // Find inlineData (base64 image) in response parts
+      const parts = data?.candidates?.[0]?.content?.parts || []
+      for (const part of parts) {
+        if (part?.inlineData?.data) return part.inlineData.data
+      }
+    } catch (e) {
+      console.error(`Gemini ${model} exception:`, e)
     }
   }
   return null
