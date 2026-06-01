@@ -83,27 +83,27 @@ async function testGemini(prompt: string, key: string) {
   } catch {}
 
   // Try each model
-  // Try exact model names from ListModels — without responseMimeType
-  const models = [
-    'gemini-2.5-flash-image',
-    'gemini-3.1-flash-image',
-    'gemini-3.1-flash-image-preview',
-    'gemini-3-pro-image',
-  ]
+  // Test Imagen 4 (now with billing enabled)
+  const models = ['imagen-4.0-generate-001', 'imagen-4.0-fast-generate-001']
   const results: Record<string, unknown>[] = [{ availableImageModels: availableModels }]
   for (const model of models) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${key}`
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ['IMAGE'] },
+          instances: [{ prompt }],
+          parameters: {
+            sampleCount: 1,
+            aspectRatio: '4:3',
+            safetySetting: 'block_low_and_above',
+            personGeneration: 'allow_all',
+          },
         }),
       })
       const text = await res.text()
-      const hasImage = text.includes('inlineData')
+      const hasImage = text.includes('bytesBase64Encoded')
       results.push({ model, status: res.status, hasImage, response: text.slice(0, 500) })
       if (hasImage) return results
     } catch (e) {
