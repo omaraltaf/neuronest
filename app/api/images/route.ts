@@ -124,34 +124,34 @@ function buildPrompt(query: string, style: string): string {
 }
 
 async function tryGemini(prompt: string, key: string): Promise<string | null> {
-  const models = [
-    'gemini-2.5-flash-image',
-    'gemini-3.1-flash-image',
-    'gemini-3.1-flash-image-preview',
-    'gemini-3-pro-image',
-  ]
+  // Imagen 4 via predict endpoint (billing now enabled)
+  const models = ['imagen-4.0-generate-001', 'imagen-4.0-fast-generate-001']
   for (const model of models) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${key}`
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ['IMAGE'] },
+          instances: [{ prompt }],
+          parameters: {
+            sampleCount: 1,
+            aspectRatio: '4:3',
+            safetySetting: 'block_low_and_above',
+            personGeneration: 'allow_all',
+            negativePrompt: 'cartoon, illustration, drawing, anime, animated, digital art',
+          },
         }),
       })
       if (!res.ok) {
-        console.error(`Gemini ${model} ${res.status}:`, (await res.text()).slice(0, 200))
+        console.error(`Imagen ${model} ${res.status}:`, (await res.text()).slice(0, 300))
         continue
       }
       const data = await res.json()
-      const parts = data?.candidates?.[0]?.content?.parts || []
-      for (const part of parts) {
-        if (part?.inlineData?.data) return part.inlineData.data
-      }
+      const b64 = data?.predictions?.[0]?.bytesBase64Encoded
+      if (b64) return b64
     } catch (e) {
-      console.error(`Gemini ${model} exception:`, e)
+      console.error(`Imagen ${model} exception:`, e)
     }
   }
   return null
