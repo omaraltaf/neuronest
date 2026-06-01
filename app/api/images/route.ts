@@ -72,28 +72,41 @@ export async function GET(req: NextRequest) {
 }
 
 async function testGemini(prompt: string, key: string) {
-  const models = ['imagen-3.0-generate-002', 'imagen-3.0-fast-generate-001']
-  const versions = ['v1beta', 'v1']
-  const results: Record<string, unknown>[] = []
+  // First: list available models to see what this key can access
+  let availableModels: string[] = []
+  try {
+    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}&pageSize=100`)
+    const listData = await listRes.json()
+    availableModels = (listData.models || [])
+      .map((m: Record<string, string>) => m.name)
+      .filter((n: string) => n.includes('imagen') || n.includes('image'))
+  } catch {}
+
+  // Try each model
+  const models = [
+    'imagen-3.0-generate-002',
+    'imagen-3.0-fast-generate-001',
+    'imagen-3.0-generate-001',
+    'imagen-2.0-generate-001',
+  ]
+  const results: Record<string, unknown>[] = [{ availableImageModels: availableModels }]
   for (const model of models) {
-    for (const v of versions) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/${v}/models/${model}:predict?key=${key}`
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            instances: [{ prompt }],
-            parameters: { sampleCount: 1, aspectRatio: '4:3', safetySetting: 'block_only_high', personGeneration: 'allow_all' },
-          }),
-        })
-        const text = await res.text()
-        const hasImage = text.includes('bytesBase64Encoded')
-        results.push({ model, version: v, status: res.status, hasImage, response: text.slice(0, 500) })
-        if (hasImage) return results // stop on first success
-      } catch (e) {
-        results.push({ model, version: v, error: String(e) })
-      }
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${key}`
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instances: [{ prompt }],
+          parameters: { sampleCount: 1, aspectRatio: '4:3', safetySetting: 'block_only_high', personGeneration: 'allow_all' },
+        }),
+      })
+      const text = await res.text()
+      const hasImage = text.includes('bytesBase64Encoded')
+      results.push({ model, status: res.status, hasImage, response: text.slice(0, 400) })
+      if (hasImage) return results
+    } catch (e) {
+      results.push({ model, error: String(e) })
     }
   }
   return results
@@ -110,7 +123,7 @@ function buildPrompt(query: string, style: string): string {
 }
 
 async function tryGemini(prompt: string, key: string): Promise<string | null> {
-  const models = ['imagen-3.0-generate-002', 'imagen-3.0-fast-generate-001']
+  const models = ['imagen-3.0-generate-002', 'imagen-3.0-fast-generate-001', 'imagegeneration@006', 'imagegeneration@005']
   const versions = ['v1beta', 'v1']
   for (const model of models) {
     for (const v of versions) {
