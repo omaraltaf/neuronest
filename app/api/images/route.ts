@@ -10,18 +10,18 @@ export async function GET(req: NextRequest) {
   const childId   = req.nextUrl.searchParams.get('child') || ''
   const index     = req.nextUrl.searchParams.get('i') || '0'
   const isDebug   = !!req.nextUrl.searchParams.get('debug')
-  const GEMINI_KEY = process.env.GEMINI_API_KEY
+  const HF_KEY    = process.env.HF_API_KEY
 
   if (isDebug) {
-    const results = await runTests(query, GEMINI_KEY || '')
-    return NextResponse.json({ query, keyPrefix: GEMINI_KEY?.slice(0, 12), results })
+    const result = await testHF(query, HF_KEY || '')
+    return NextResponse.json({ query, hfKeyPresent: !!HF_KEY, result })
   }
 
-  if (!GEMINI_KEY) return svg(query)
+  if (!HF_KEY) return svgPlaceholder(query)
 
   const prompt = buildPrompt(query, styleSeed)
-  const b64 = await generateImage(prompt, GEMINI_KEY)
-  if (!b64) return svg(query)
+  const b64 = await generateWithHF(prompt, HF_KEY)
+  if (!b64) return svgPlaceholder(query)
 
   if (contentId && childId) {
     try {
@@ -34,11 +34,11 @@ export async function GET(req: NextRequest) {
         child_id: childId, content_id: contentId,
         sentence_index: parseInt(index), prompt, storage_path: path,
       }, { onConflict: 'content_id,sentence_index' })
-    } catch {}
+    } catch (e) { console.error('Cache error:', e) }
   }
 
   return new NextResponse(Buffer.from(b64, 'base64'), {
-    headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=2592000' },
+    headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=2592000' },
   })
 }
 
@@ -49,97 +49,77 @@ function buildPrompt(query: string, style: string): string {
     .replace(/\bmy\b/gi, 'the')
     .slice(0, 200)
   const s = style ? `${style}, ` : ''
-  return `${s}${cleaned}, real photograph, natural light, photorealistic, child-safe, no text`
+  return `${s}${cleaned}, real photograph, DSLR, natural light, photorealistic, child-safe, positive, no text, no watermark`
 }
 
-async function generateImage(prompt: string, key: string): Promise<string | null> {
-  // Try gemini-2.5-flash-image — available on this key, uses generateContent with IMAGE modality
-  const models = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image', 'gemini-3-pro-image']
-  
+async function generateWithHF(prompt: string, key: string): Promise<string | null> {
+  // FLUX.1-schnell — fast, high quality, free tier
+  const models = [
+    'black-forest-labs/FLUX.1-schnell',
+    'stabilityai/stable-diffusion-xl-base-1.0',
+  ]
+
   for (const model of models) {
     try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              role: 'user',
-              parts: [{ text: `Create an image: ${prompt}` }]
-            }],
-            generationConfig: {
-              responseModalities: ['IMAGE'],
-            }
-          }),
-        }
-      )
+      const res = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${key}`,
+          'Content-Type': 'application/json',
+          'x-wait-for-model': 'true',
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: { width: 800, height: 600, num_inference_steps: 4 },
+        }),
+      })
+
       if (!res.ok) {
-        console.error(`${model} ${res.status}:`, (await res.text()).slice(0, 200))
+        const err = await res.text()
+        console.error(`HF ${model} ${res.status}:`, err.slice(0, 200))
         continue
       }
-      const data = await res.json()
-      const parts = data?.candidates?.[0]?.content?.parts || []
-      for (const part of parts) {
-        if (part?.inlineData?.data) return part.inlineData.data
-      }
+
+      const buf = await res.arrayBuffer()
+      if (buf.byteLength < 1000) continue // empty response
+      return Buffer.from(buf).toString('base64')
     } catch (e) {
-      console.error(`${model} error:`, e)
+      console.error(`HF ${model} error:`, e)
     }
   }
   return null
 }
 
-async function runTests(query: string, key: string) {
+async function testHF(query: string, key: string) {
   const prompt = buildPrompt(query, '')
   const results = []
 
-  // Test 1: gemini-2.5-flash-image with IMAGE modality
-  for (const model of ['gemini-2.5-flash-image', 'gemini-3.1-flash-image', 'gemini-3-pro-image']) {
+  for (const model of ['black-forest-labs/FLUX.1-schnell', 'stabilityai/stable-diffusion-xl-base-1.0']) {
     try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: `Create an image: ${prompt}` }] }],
-            generationConfig: { responseModalities: ['IMAGE'] },
-          }),
-        }
-      )
-      const text = await res.text()
-      const hasImage = text.includes('inlineData')
-      results.push({ model, status: res.status, hasImage, snippet: text.slice(0, 300) })
-      if (hasImage) break
+      const res = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${key}`,
+          'Content-Type': 'application/json',
+          'x-wait-for-model': 'true',
+        },
+        body: JSON.stringify({ inputs: prompt, parameters: { width: 512, height: 384, num_inference_steps: 4 } }),
+      })
+      const contentType = res.headers.get('content-type') || ''
+      const isImage = contentType.includes('image') || res.ok
+      let snippet = ''
+      if (!res.ok) snippet = (await res.text()).slice(0, 300)
+      const size = res.ok ? res.headers.get('content-length') || 'unknown' : '0'
+      results.push({ model, status: res.status, isImage, contentType, size, error: snippet })
+      if (isImage && res.ok) break
     } catch (e) {
       results.push({ model, error: String(e) })
     }
   }
-
-  // Test 2: Imagen 4 (may work now with billing)
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${key}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          instances: [{ prompt }],
-          parameters: { sampleCount: 1, aspectRatio: '4:3', safetySetting: 'block_low_and_above', personGeneration: 'allow_all' },
-        }),
-      }
-    )
-    const text = await res.text()
-    results.push({ model: 'imagen-4.0-generate-001', status: res.status, hasImage: text.includes('bytesBase64Encoded'), snippet: text.slice(0, 300) })
-  } catch (e) {
-    results.push({ model: 'imagen-4.0-generate-001', error: String(e) })
-  }
-
   return results
 }
 
-function svg(label: string) {
+function svgPlaceholder(label: string) {
   const w = label.replace(/\b[A-Z][a-z]+\b/g, '').trim().split(' ').slice(0, 3).join(' ')
   return new NextResponse(
     `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
