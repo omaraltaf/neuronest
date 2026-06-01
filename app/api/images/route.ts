@@ -83,7 +83,13 @@ async function testGemini(prompt: string, key: string) {
   } catch {}
 
   // Try each model
-  const models = ['gemini-2.5-flash-preview-05-20', 'gemini-2.0-flash-exp']
+  // Try exact model names from ListModels — without responseMimeType
+  const models = [
+    'gemini-2.5-flash-image',
+    'gemini-3.1-flash-image',
+    'gemini-3.1-flash-image-preview',
+    'gemini-3-pro-image',
+  ]
   const results: Record<string, unknown>[] = [{ availableImageModels: availableModels }]
   for (const model of models) {
     try {
@@ -92,8 +98,8 @@ async function testGemini(prompt: string, key: string) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: `Generate an image: ${prompt}` }] }],
-          generationConfig: { responseModalities: ['image', 'text'], responseMimeType: 'image/png' },
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseModalities: ['IMAGE'] },
         }),
       })
       const text = await res.text()
@@ -118,9 +124,12 @@ function buildPrompt(query: string, style: string): string {
 }
 
 async function tryGemini(prompt: string, key: string): Promise<string | null> {
-  // Use Gemini 2.5 Flash image generation (free tier) via generateContent API
-  const models = ['gemini-2.5-flash-preview-05-20', 'gemini-2.0-flash-exp']
-
+  const models = [
+    'gemini-2.5-flash-image',
+    'gemini-3.1-flash-image',
+    'gemini-3.1-flash-image-preview',
+    'gemini-3-pro-image',
+  ]
   for (const model of models) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`
@@ -128,22 +137,15 @@ async function tryGemini(prompt: string, key: string): Promise<string | null> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [{ text: `Generate an image: ${prompt}` }]
-          }],
-          generationConfig: {
-            responseModalities: ['image', 'text'],
-            responseMimeType: 'image/png',
-          },
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseModalities: ['IMAGE'] },
         }),
       })
-      const text = await res.text()
       if (!res.ok) {
-        console.error(`Gemini ${model} ${res.status}:`, text.slice(0, 300))
+        console.error(`Gemini ${model} ${res.status}:`, (await res.text()).slice(0, 200))
         continue
       }
-      const data = JSON.parse(text)
-      // Find inlineData (base64 image) in response parts
+      const data = await res.json()
       const parts = data?.candidates?.[0]?.content?.parts || []
       for (const part of parts) {
         if (part?.inlineData?.data) return part.inlineData.data
