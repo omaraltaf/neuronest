@@ -70,7 +70,7 @@ function PrintHeader({ title, emoji, colour }: { title: string; emoji: string; c
       </div>
       <div>
         <div className="font-black text-xl text-gray-900">{title}</div>
-        <div className="text-xs text-gray-400 mt-0.5">NeuroNest · neuronest.vercel.app</div>
+        <div className="text-xs text-gray-400 mt-0.5">NeuroNest · neuronest-nine.vercel.app</div>
       </div>
     </div>
   )

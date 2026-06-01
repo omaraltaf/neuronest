@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: { serverActions: { allowedOrigins: ['localhost:3000', 'neuronest.vercel.app'] } },
+  experimental: {
+    serverActions: {
+      allowedOrigins: ['localhost:3000', 'neuronest-nine.vercel.app', 'neuronest.vercel.app'],
+    },
+  },
 }
 module.exports = nextConfig
