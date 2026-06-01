@@ -84,10 +84,9 @@ async function testGemini(prompt: string, key: string) {
 
   // Try each model
   const models = [
-    'imagen-3.0-generate-002',
-    'imagen-3.0-fast-generate-001',
-    'imagen-3.0-generate-001',
-    'imagen-2.0-generate-001',
+    'imagen-4.0-generate-001',
+    'imagen-4.0-fast-generate-001',
+    'imagen-4.0-ultra-generate-001',
   ]
   const results: Record<string, unknown>[] = [{ availableImageModels: availableModels }]
   for (const model of models) {
@@ -123,7 +122,7 @@ function buildPrompt(query: string, style: string): string {
 }
 
 async function tryGemini(prompt: string, key: string): Promise<string | null> {
-  const models = ['imagen-3.0-generate-002', 'imagen-3.0-fast-generate-001', 'imagegeneration@006', 'imagegeneration@005']
+  const models = ['imagen-4.0-generate-001', 'imagen-4.0-fast-generate-001', 'imagen-4.0-ultra-generate-001']
   const versions = ['v1beta', 'v1']
   for (const model of models) {
     for (const v of versions) {
