@@ -97,7 +97,7 @@ async function testGemini(prompt: string, key: string) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           instances: [{ prompt }],
-          parameters: { sampleCount: 1, aspectRatio: '4:3', safetySetting: 'block_only_high', personGeneration: 'allow_all' },
+          parameters: { sampleCount: 1, aspectRatio: '4:3', safetySetting: 'block_low_and_above', personGeneration: 'allow_all' },
         }),
       })
       const text = await res.text()
@@ -136,7 +136,7 @@ async function tryGemini(prompt: string, key: string): Promise<string | null> {
             parameters: {
               sampleCount: 1,
               aspectRatio: '4:3',
-              safetySetting: 'block_only_high',
+              safetySetting: 'block_low_and_above',
               personGeneration: 'allow_all',
               negativePrompt: 'cartoon, illustration, drawing, anime, animated, digital art',
             },
