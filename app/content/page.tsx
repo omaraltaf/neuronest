@@ -527,13 +527,14 @@ function RolePlayViewer({ data }: { data: Record<string, unknown> }) {
   )
 }
 
-function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, onGenerateImages, revising }: {
+function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, onGenerateImages, onRegenerateImages, revising }: {
   item: Record<string, unknown>
   onClose: () => void
   onRevise: (feedback: string) => void
   onDelete: () => void
   onPrint: () => void
   onGenerateImages: () => void
+  onRegenerateImages: () => void
   revising: boolean
 }) {
   const [feedbackMode, setFeedbackMode] = useState(false)
@@ -585,10 +586,16 @@ function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, onGenerateI
         {/* Footer actions */}
         <div className="flex-shrink-0 border-t border-gray-100 px-4 py-3 space-y-2">
           {item.content_type === 'social_story' && (
-            <button onClick={onGenerateImages}
-              className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold rounded-xl text-sm transition">
-              🖼️ Generate images for this story
-            </button>
+            <div className="flex gap-2">
+              <button onClick={onGenerateImages}
+                className="flex-1 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold rounded-xl text-sm transition">
+                🖼️ Generate images
+              </button>
+              <button onClick={onRegenerateImages}
+                className="flex-1 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 font-bold rounded-xl text-sm transition">
+                🔄 Regenerate
+              </button>
+            </div>
           )}
           {!feedbackMode ? (
             <div className="flex gap-2">
@@ -763,9 +770,17 @@ function ContentContent() {
     setShowGenerate(false)
   }
 
-  const handleGenerateImages = async () => {
+  const handleGenerateImages = async (regenerate = false) => {
     if (!viewing || !child) return
     try {
+      // If regenerating, delete existing cached images first
+      if (regenerate) {
+        await supabase
+          .from('story_images')
+          .delete()
+          .eq('content_id', viewing.id as string)
+      }
+
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-story-images`,
         {
@@ -779,7 +794,7 @@ function ContentContent() {
       )
       const data = await res.json()
       console.log('Image generation triggered:', data)
-      alert('Images are being generated in the background. Close and reopen the story in 30 seconds to see them.')
+      alert(`Images are ${regenerate ? 'regenerating' : 'being generated'} in the background. Close and reopen the story in 30 seconds to see them.`)
     } catch (e) {
       console.error('Error triggering image generation:', e)
     }
@@ -931,7 +946,8 @@ function ContentContent() {
           onRevise={handleRevise}
           onDelete={() => setConfirmDelete(true)}
           onPrint={handlePrint}
-          onGenerateImages={handleGenerateImages}
+          onGenerateImages={() => handleGenerateImages(false)}
+          onRegenerateImages={() => handleGenerateImages(true)}
           revising={revising} />
       )}
 
