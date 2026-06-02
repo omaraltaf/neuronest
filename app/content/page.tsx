@@ -20,19 +20,37 @@ const TYPE_COLORS: Record<string, string> = {
 
 // ── Visual Renderers ──────────────────────────────────────────────────────────
 
-function StoryImage({ query, alt, contentId, childId, index, styleSeed }: {
-  query: string; alt: string
-  contentId?: string; childId?: string; index?: number; styleSeed?: string
+function StoryImage({ alt, contentId, childId, index }: {
+  alt: string; contentId?: string; childId?: string; index?: number
 }) {
-  return (
-    <div className="w-full rounded-xl overflow-hidden">
-      <StoryImageClientSide
-        query={query} alt={alt}
-        styleSeed={styleSeed} contentId={contentId}
-        childId={childId} index={index}
-      />
-    </div>
-  )
+  const [src, setSrc] = useState<string | null>(null)
+  const [checked, setChecked] = useState(false)
+  const supabase = createClient()
+
+  useEffect(() => {
+    if (!contentId || !childId || index === undefined) { setChecked(true); return }
+    const load = async () => {
+      const { data } = await supabase
+        .from('story_images')
+        .select('storage_path')
+        .eq('content_id', contentId)
+        .eq('sentence_index', index)
+        .maybeSingle()
+      if (data?.storage_path) {
+        const { data: urlData } = supabase.storage
+          .from('neuronest-documents')
+          .getPublicUrl(data.storage_path)
+        setSrc(urlData.publicUrl)
+      }
+      setChecked(true)
+    }
+    load()
+  }, [contentId, index]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!checked) return <div className="w-full bg-gray-100 animate-pulse rounded-t-2xl" style={{ height: 180 }} />
+  if (!src) return null
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={alt} style={{ width: '100%', height: 200, objectFit: 'cover' }} className="w-full rounded-t-2xl" />
 }
 
 // Derive image query from sentence — use image_query if present, else use full sentence text
@@ -75,12 +93,10 @@ function SocialStoryViewer({ data, contentId, childId }: {
               }`}>
               {/* Real photo */}
               <StoryImage
-                query={getImageQuery(s)}
                 alt={s.text as string}
                 contentId={contentId}
                 childId={childId}
                 index={i}
-                styleSeed={styleSeed}
               />
               {/* Sentence */}
               <div className={`p-3.5 flex items-start gap-3 ${
@@ -721,6 +737,20 @@ function ContentContent() {
     if (saved) {
       setContentItems(prev => [saved, ...prev])
       setViewing(saved)
+      // Trigger Supabase Edge Function to generate images in background
+      if (saved.content_type === 'social_story') {
+        fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-story-images`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ record: saved }),
+          }
+        ).catch(e => console.error('Edge fn error:', e))
+      }
     }
     setGenerating(false)
     setShowGenerate(false)
