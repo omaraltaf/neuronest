@@ -76,27 +76,13 @@ export function StoryImageClientSide({ query, alt, styleSeed, contentId, childId
     })
   }, [query]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (status === 'loading') {
-    return (
-      <div className="w-full bg-gray-100 flex items-center justify-center" style={{ height: 200 }}>
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex gap-1">
-            <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />
-          </div>
-          <div className="text-xs text-gray-400">Generating image…</div>
-        </div>
-      </div>
-    )
+  if (status === 'error' || (!src && status !== 'loading')) {
+    return null // Don't show broken image — story reads fine without it
   }
 
-  if (status === 'error' || !src) {
+  if (status === 'loading') {
     return (
-      <div className="w-full bg-gray-50 flex items-center justify-center" style={{ height: 200 }}>
-        <div className="text-center">
-          <div className="text-4xl text-gray-300">🖼️</div>
-          <div className="text-xs text-gray-400 mt-1">{alt}</div>
-        </div>
-      </div>
+      <div className="w-full bg-gradient-to-r from-gray-100 to-gray-50 animate-pulse" style={{ height: 180 }} />
     )
   }
 
