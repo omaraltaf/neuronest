@@ -527,12 +527,13 @@ function RolePlayViewer({ data }: { data: Record<string, unknown> }) {
   )
 }
 
-function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, revising }: {
+function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, onGenerateImages, revising }: {
   item: Record<string, unknown>
   onClose: () => void
   onRevise: (feedback: string) => void
   onDelete: () => void
   onPrint: () => void
+  onGenerateImages: () => void
   revising: boolean
 }) {
   const [feedbackMode, setFeedbackMode] = useState(false)
@@ -583,6 +584,12 @@ function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, revising }:
 
         {/* Footer actions */}
         <div className="flex-shrink-0 border-t border-gray-100 px-4 py-3 space-y-2">
+          {item.content_type === 'social_story' && (
+            <button onClick={onGenerateImages}
+              className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold rounded-xl text-sm transition">
+              🖼️ Generate images for this story
+            </button>
+          )}
           {!feedbackMode ? (
             <div className="flex gap-2">
               <button onClick={() => setFeedbackMode(true)}
@@ -756,6 +763,28 @@ function ContentContent() {
     setShowGenerate(false)
   }
 
+  const handleGenerateImages = async () => {
+    if (!viewing || !child) return
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-story-images`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ record: viewing }),
+        }
+      )
+      const data = await res.json()
+      console.log('Image generation triggered:', data)
+      alert('Images are being generated in the background. Close and reopen the story in 30 seconds to see them.')
+    } catch (e) {
+      console.error('Error triggering image generation:', e)
+    }
+  }
+
   const handleRevise = async (feedback: string) => {
     if (!viewing || !child) return
     setRevising(true)
@@ -902,6 +931,7 @@ function ContentContent() {
           onRevise={handleRevise}
           onDelete={() => setConfirmDelete(true)}
           onPrint={handlePrint}
+          onGenerateImages={handleGenerateImages}
           revising={revising} />
       )}
 
