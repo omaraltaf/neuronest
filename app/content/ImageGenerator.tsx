@@ -23,9 +23,9 @@ async function generateImageClientSide(prompt: string, hfKey: string): Promise<s
       if (!res.ok) { console.error(`HF ${model} ${res.status}`); continue }
       const blob = await res.blob()
       if (blob.size < 1000) continue
-      return await new Promise(resolve => {
+      return await new Promise<string | null>(resolve => {
         const reader = new FileReader()
-        reader.onloadend = () => resolve((reader.result as string).split(',')[1])
+        reader.onloadend = () => { const r = reader.result as string | null; resolve(r ? r.split(',')[1] : null) }
         reader.readAsDataURL(blob)
       })
     } catch (e) { console.error(`HF ${model}:`, e) }
@@ -88,7 +88,7 @@ export function StoryImageClientSide({ query, alt, styleSeed, contentId, childId
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} style={{ width: '100%', height: 200, objectFit: 'cover' }} />
+    <img src={src ?? undefined} alt={alt} style={{ width: '100%', height: 200, objectFit: 'cover' }} />
   )
 }
 // rebuild 1780402620
