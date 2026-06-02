@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, Suspense } from 'react'
+import { StoryImageClientSide } from './ImageGenerator'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -23,70 +24,13 @@ function StoryImage({ query, alt, contentId, childId, index, styleSeed }: {
   query: string; alt: string
   contentId?: string; childId?: string; index?: number; styleSeed?: string
 }) {
-  const [status, setStatus] = useState<'loading'|'loaded'|'error'>('loading')
-  const [src, setSrc] = useState<string | null>(null)
-
-  useEffect(() => {
-    const GEMINI_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY
-    if (!GEMINI_KEY) { setStatus('error'); return }
-
-    const style = styleSeed ? `Consistent visual style: ${styleSeed}. ` : ''
-    const cleaned = query.replace(/\b[A-Z][a-z]+\b/g, 'a child').replace(/\bI\b/g, 'a child').slice(0, 200)
-    const prompt = `Real photograph, DSLR camera, natural daylight: ${style}${cleaned}. NOT cartoon. Real people, photographic realism. Child-safe. No text in image.`
-
-    const generate = async () => {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              instances: [{ prompt }],
-              parameters: { sampleCount: 1, aspectRatio: '4:3', safetySetting: 'block_only_high', personGeneration: 'allow_all' },
-            }),
-          }
-        )
-        if (!res.ok) { setStatus('error'); return }
-        const data = await res.json()
-        const b64 = data?.predictions?.[0]?.bytesBase64Encoded
-        if (b64) {
-          setSrc(`data:image/png;base64,${b64}`)
-          setStatus('loaded')
-        } else {
-          setStatus('error')
-        }
-      } catch { setStatus('error') }
-    }
-    generate()
-  }, [query, styleSeed]) // eslint-disable-line react-hooks/exhaustive-deps
-
   return (
-    <div className="w-full rounded-xl overflow-hidden bg-gray-100 relative" style={{ height: 200 }}>
-      {status === 'loading' && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex gap-1">
-              <div className="typing-dot"/><div className="typing-dot"/><div className="typing-dot"/>
-            </div>
-            <div className="text-xs text-gray-400">Generating image…</div>
-          </div>
-        </div>
-      )}
-      {status === 'error' && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <div className="text-4xl mb-1 text-gray-300">🖼️</div>
-            <div className="text-xs text-gray-400">{alt}</div>
-          </div>
-        </div>
-      )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {src && <img
-        src={src}
-        alt={alt}
-        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-      />}
+    <div className="w-full rounded-xl overflow-hidden">
+      <StoryImageClientSide
+        query={query} alt={alt}
+        styleSeed={styleSeed} contentId={contentId}
+        childId={childId} index={index}
+      />
     </div>
   )
 }
