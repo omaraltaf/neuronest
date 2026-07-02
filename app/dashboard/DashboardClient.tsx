@@ -22,6 +22,116 @@ const STATUS_COLORS: Record<string, string> = {
   paused:      '#9CA3AF',
 }
 
+function mondayOf(d: Date): string {
+  const daysSinceMonday = (d.getUTCDay() + 6) % 7
+  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - daysSinceMonday))
+  return monday.toISOString().slice(0, 10)
+}
+
+function WeeklyFocusCard({ childId, focus }: { childId: string; focus: Record<string, unknown> | null }) {
+  const router = useRouter()
+  const [expanded, setExpanded] = useState(false)
+  const [generating, setGenerating] = useState(false)
+
+  const isCurrentWeek = focus && (focus.week_start as string) === mondayOf(new Date())
+  const data = (focus?.focus_data || null) as Record<string, unknown> | null
+
+  const generate = async () => {
+    setGenerating(true)
+    try {
+      await fetch('/api/weekly-focus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ childId }),
+      })
+      router.refresh()
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  if (!isCurrentWeek || !data) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center gap-3">
+        <span className="text-2xl">🎯</span>
+        <div className="flex-1">
+          <div className="font-bold text-sm text-gray-900">This week&apos;s focus</div>
+          <div className="text-xs text-gray-400">Dr. Santos hasn&apos;t planned this week yet</div>
+        </div>
+        <button onClick={generate} disabled={generating}
+          className="text-xs font-bold px-3 py-1.5 rounded-full bg-violet-600 text-white hover:bg-violet-700 transition disabled:opacity-50">
+          {generating ? 'Planning… ~1 min' : 'Plan this week'}
+        </button>
+      </div>
+    )
+  }
+
+  const tip = data.coaching_tip as Record<string, string> | undefined
+  const activity = data.starter_activity as Record<string, unknown> | undefined
+  const embeds = (data.embed_opportunities || []) as Record<string, string>[]
+
+  return (
+    <div className="bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-2xl px-4 py-4 shadow-md shadow-violet-200">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl">🎯</span>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] font-bold text-violet-200 uppercase tracking-wide">This week&apos;s focus · Dr. Santos</div>
+          <div className="font-black text-sm mt-0.5">{data.focus_title as string}</div>
+          <p className="text-xs text-violet-100 mt-1.5 leading-relaxed">{data.focus_reason as string}</p>
+          {(data.celebrate as string) && (
+            <p className="text-xs text-violet-100 mt-2 leading-relaxed">🌟 {data.celebrate as string}</p>
+          )}
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mt-3 space-y-3">
+          {activity && (
+            <div className="bg-white/10 rounded-xl p-3">
+              <div className="text-xs font-bold">▶️ Start tonight: {activity.title as string} ({activity.duration_minutes as number} min)</div>
+              <div className="text-[11px] text-violet-100 mt-1">You need: {activity.materials as string}</div>
+              <ol className="mt-1.5 space-y-1">
+                {((activity.steps || []) as string[]).map((s, i) => (
+                  <li key={i} className="text-[11px] text-violet-50 leading-relaxed">{i + 1}. {s}</li>
+                ))}
+              </ol>
+              <div className="text-[11px] text-violet-100 mt-1.5">✅ Success looks like: {activity.success_looks_like as string}</div>
+            </div>
+          )}
+          {tip && (
+            <div className="bg-white/10 rounded-xl p-3">
+              <div className="text-xs font-bold">💡 Technique of the week: {tip.technique}</div>
+              <div className="text-[11px] text-violet-50 mt-1 leading-relaxed">{tip.how_to}</div>
+              <div className="text-[11px] text-violet-200 mt-1 italic">{tip.why_it_works}</div>
+            </div>
+          )}
+          {embeds.length > 0 && (
+            <div className="bg-white/10 rounded-xl p-3">
+              <div className="text-xs font-bold mb-1.5">🔄 Weave it into your day</div>
+              {embeds.map((e, i) => (
+                <div key={i} className="text-[11px] text-violet-50 leading-relaxed mb-1">
+                  <span className="font-semibold capitalize">{e.routine}:</span> {e.what_to_do}
+                </div>
+              ))}
+            </div>
+          )}
+          {(data.watch_for as string) && (
+            <div className="text-[11px] text-violet-100">👀 Watch for: {data.watch_for as string}</div>
+          )}
+          {(data.week_ahead_question as string) && (
+            <div className="text-[11px] text-violet-100">💬 {data.week_ahead_question as string}</div>
+          )}
+        </div>
+      )}
+
+      <button onClick={() => setExpanded(e => !e)}
+        className="mt-3 text-xs font-bold text-white/90 hover:text-white transition">
+        {expanded ? 'Show less ↑' : 'See the plan for this week ↓'}
+      </button>
+    </div>
+  )
+}
+
 function CheckinDueBanner({ childId }: { childId: string }) {
   return (
     <Link href={`/checkin?child=${childId}`}
@@ -36,7 +146,7 @@ function CheckinDueBanner({ childId }: { childId: string }) {
   )
 }
 
-export default function DashboardClient({ child, appState, goals, todayLogs, streak, recentCheckin, currentPlan }: {
+export default function DashboardClient({ child, appState, goals, todayLogs, streak, recentCheckin, currentPlan, weeklyFocus }: {
   child: Record<string, unknown>
   appState: Record<string, unknown>
   goals: Record<string, unknown>[]
@@ -44,6 +154,7 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
   streak: number
   recentCheckin: Record<string, unknown> | null
   currentPlan: Record<string, unknown> | null
+  weeklyFocus: Record<string, unknown> | null
 }) {
   const router = useRouter()
   const supabase = createClient()
@@ -169,6 +280,9 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
           <h1 className="text-2xl font-black text-gray-900">Hello! 👋</h1>
           <p className="text-sm text-gray-400 mt-0.5">{date}</p>
         </div>
+
+        {/* This week's focus (Weekly Planning Agent) */}
+        <WeeklyFocusCard childId={childId} focus={weeklyFocus} />
 
         {/* Check-in banner */}
         {checkinDue && <CheckinDueBanner childId={childId} />}

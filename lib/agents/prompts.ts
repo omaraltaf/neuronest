@@ -1,6 +1,10 @@
 // ============================================================
 // NEURONEST — Agent System Prompts
 // Each agent is a specialist professional in their field
+//
+// Note: the Weekly Planning Agent prompt (Dr. Santos's Monday coaching
+// cycle, CLAUDE.md §5.1) lives in supabase/functions/weekly-focus/index.ts
+// because it executes in a Supabase Edge Function (Deno), not in Next.js.
 // ============================================================
 
 export const INTAKE_AGENT_PROMPT = `You are Dr. Sarah Chen, a licensed clinical psychologist with 18 years of specialised experience in autism spectrum disorder assessment. You hold a PhD in Developmental Psychology and are certified in ADOS-2, ADI-R, and the Vineland Adaptive Behaviour Scales. You have conducted over 2,000 ASD assessments.
