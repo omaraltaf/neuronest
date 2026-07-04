@@ -40,6 +40,8 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true })
 }
 
+// §5.6 Momentum & Celebration Layer: every auto-notification is tied to what the family
+// actually did — never generic. §5.3: one content-gap nudge at a time, never a pile.
 async function generateNotifications(
   supabase: ReturnType<typeof createClient>,
   childId: string,
@@ -47,19 +49,35 @@ async function generateNotifications(
 ) {
   const now = new Date()
 
-  const [{ data: appState }, { data: goals }, { data: recentLogs }] = await Promise.all([
+  const [
+    { data: appState },
+    { data: goals },
+    { data: recentLogs },
+    { data: child },
+    { data: weeklyFocus },
+    { data: recentContent },
+  ] = await Promise.all([
     supabase.from('app_state').select('*').eq('child_id', childId).maybeSingle(),
     supabase.from('goals').select('*').eq('child_id', childId),
     supabase.from('session_logs').select('*').eq('child_id', childId)
       .gte('logged_at', new Date(now.getTime() - 7 * 86400000).toISOString()),
+    supabase.from('children').select('name').eq('id', childId).maybeSingle(),
+    supabase.from('weekly_focus').select('focus_data, week_start').eq('child_id', childId)
+      .order('week_start', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('generated_content').select('goal_id, generated_at').eq('child_id', childId)
+      .neq('content_type', 'child_zone_cards'),
   ])
+
+  const childName = (child?.name as string) || 'your child'
+  const focusData = (weeklyFocus?.focus_data || null) as Record<string, unknown> | null
+  const focusTitle = focusData?.focus_title as string | undefined
 
   const toInsert: {
     child_id: string; user_id: string; type: string;
     title: string; body: string; action_url: string
   }[] = []
 
-  // 1. Check-in due
+  // 1. Check-in due — framed as the child's story, not admin
   if (appState?.current_phase === 'active') {
     const lastCheckin = appState.last_checkin_at
       ? new Date(appState.last_checkin_at) : null
@@ -74,15 +92,16 @@ async function generateNotifications(
         toInsert.push({
           child_id: childId, user_id: userId,
           type: 'checkin_due',
-          title: '📊 Weekly check-in is due',
-          body: `It's been ${Math.floor(daysSince)} days since your last check-in with Dr. Eriksson.`,
+          title: '📊 Time to reflect on the week',
+          body: `Dr. Eriksson would love to hear how ${childName}'s week went — the wins count as much as the hard parts. ~15 minutes.`,
           action_url: `/checkin?child=${childId}`,
         })
       }
     }
   }
 
-  // 2. Goals newly achieved
+  // 2. Goals newly achieved — name what the child can now do; the Goal Progression
+  // Engine's own notification (with the drafted next step) follows within a minute
   const achievedGoals = (goals || []).filter(g =>
     g.status === 'achieved' && g.achieved_at &&
     (now.getTime() - new Date(g.achieved_at as string).getTime()) < 48 * 3600000
@@ -95,14 +114,14 @@ async function generateNotifications(
       toInsert.push({
         child_id: childId, user_id: userId,
         type: 'goal_achieved',
-        title: '🏆 Goal achieved!',
-        body: `"${goal.label}" has been achieved! id:${goal.id}`,
+        title: `🏆 ${childName} did it!`,
+        body: `"${goal.label}" is achieved — a skill ${childName} didn't have when you started. Dr. Santos is drafting the natural next step. id:${goal.id}`,
         action_url: `/goals?child=${childId}`,
       })
     }
   }
 
-  // 3. Streak milestone
+  // 3. Streak milestone — celebrate what was actually practised, not the number
   const logDays = new Set((recentLogs || []).map(l =>
     new Date(l.logged_at as string).toDateString()
   ))
@@ -116,30 +135,75 @@ async function generateNotifications(
       .gte('created_at', new Date(now.getTime() - 24 * 3600000).toISOString())
       .maybeSingle()
     if (!existing.data) {
+      const practised = Array.from(new Set(
+        (recentLogs || []).map(l => (l.activity_title as string) || (l.area as string)).filter(Boolean)
+      )).slice(0, 2)
+      const practisedText = practised.length
+        ? `working on ${practised.join(' and ')}`
+        : 'showing up for practice'
       toInsert.push({
         child_id: childId, user_id: userId,
         type: 'streak',
-        title: `🔥 ${streak}-day streak!`,
-        body: `You've practised ${streak} days in a row. Incredible consistency!`,
+        title: `🔥 ${streak} days in a row`,
+        body: `${streak} straight days of ${practisedText}. This daily repetition is exactly how new skills stick for ${childName}.`,
         action_url: `/progress?child=${childId}`,
       })
     }
   }
 
-  // 4. No sessions logged this week
+  // 4. No sessions this week — point at this week's focus starter, smallest possible re-entry
   if ((recentLogs || []).length === 0 && appState?.current_phase === 'active') {
     const existing = await supabase.from('notifications')
       .select('id').eq('child_id', childId).eq('type', 'no_sessions')
       .gte('created_at', new Date(now.getTime() - 72 * 3600000).toISOString())
       .maybeSingle()
     if (!existing.data) {
+      const starter = (focusData?.starter_activity as Record<string, unknown>)?.title as string | undefined
       toInsert.push({
         child_id: childId, user_id: userId,
         type: 'no_sessions',
-        title: '💪 Keep the momentum going',
-        body: 'No sessions logged this week yet. Even 5 minutes counts!',
-        action_url: `/goals?child=${childId}`,
+        title: '🌱 A fresh start is one tap away',
+        body: focusTitle && starter
+          ? `This week's focus is "${focusTitle}" — the ${starter} takes 5 minutes and it's ready on your dashboard.`
+          : `Nothing logged yet this week — that's okay. One 5-minute moment with ${childName} tonight restarts everything.`,
+        action_url: `/dashboard?child=${childId}`,
       })
+    }
+  }
+
+  // 5. Content gap (§5.3): an in-progress goal with no fresh material — one nudge at a
+  // time, max one per week, so the inbox never piles up
+  if (appState?.current_phase === 'active') {
+    const workingGoals = (goals || []).filter(g => ['in_progress', 'emerging'].includes(g.status as string))
+    const stale = workingGoals
+      .map(g => {
+        const newest = (recentContent || [])
+          .filter(c => c.goal_id === g.id)
+          .map(c => new Date(c.generated_at as string).getTime())
+          .sort((a, b) => b - a)[0]
+        return { goal: g, newest: newest || 0 }
+      })
+      .filter(({ goal, newest }) => {
+        const activeSince = goal.started_at ? new Date(goal.started_at as string).getTime() : 0
+        const sevenDaysAgo = now.getTime() - 7 * 86400000
+        return newest < sevenDaysAgo && activeSince < sevenDaysAgo
+      })
+      .sort((a, b) => a.newest - b.newest)[0]
+
+    if (stale) {
+      const existing = await supabase.from('notifications')
+        .select('id').eq('child_id', childId).eq('type', 'content_gap')
+        .gte('created_at', new Date(now.getTime() - 7 * 86400000).toISOString())
+        .maybeSingle()
+      if (!existing.data) {
+        toInsert.push({
+          child_id: childId, user_id: userId,
+          type: 'content_gap',
+          title: '✨ Fresh material for a goal you\'re working on',
+          body: `"${stale.goal.label}" hasn't had new material in a while. Emma can make an activity pack or story for it in under a minute.`,
+          action_url: `/content?child=${childId}`,
+        })
+      }
     }
   }
 

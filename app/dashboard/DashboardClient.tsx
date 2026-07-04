@@ -32,6 +32,26 @@ function WeeklyFocusCard({ childId, focus }: { childId: string; focus: Record<st
   const router = useRouter()
   const [expanded, setExpanded] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [weekAnswer, setWeekAnswer] = useState('')
+  const [sendingAnswer, setSendingAnswer] = useState(false)
+  const [answerResult, setAnswerResult] = useState<{ title: string; opportunity: string } | null>(null)
+
+  const sendWeekAnswer = async () => {
+    if (!weekAnswer.trim()) return
+    setSendingAnswer(true)
+    try {
+      const res = await fetch('/api/weekly-focus', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ childId, answer: weekAnswer.trim() }),
+      })
+      const data = await res.json()
+      if (data.generated) setAnswerResult(data.generated)
+      router.refresh()
+    } finally {
+      setSendingAnswer(false)
+    }
+  }
 
   const isCurrentWeek = focus && (focus.week_start as string) === mondayOf(new Date())
   const data = (focus?.focus_data || null) as Record<string, unknown> | null
@@ -125,7 +145,26 @@ function WeeklyFocusCard({ childId, focus }: { childId: string; focus: Record<st
             <div className="text-[11px] text-violet-100">👀 Watch for: {data.watch_for as string}</div>
           )}
           {(data.week_ahead_question as string) && (
-            <div className="text-[11px] text-violet-100">💬 {data.week_ahead_question as string}</div>
+            <div className="bg-white/10 rounded-xl p-3">
+              <div className="text-[11px] text-violet-50 leading-relaxed">💬 {data.week_ahead_question as string}</div>
+              {answerResult ? (
+                <div className="mt-2 text-[11px] text-violet-50 leading-relaxed">
+                  ✨ Thanks! Emma prepared <span className="font-bold">&ldquo;{answerResult.title}&rdquo;</span> for {answerResult.opportunity} — it&apos;s in your library.
+                </div>
+              ) : (data.week_ahead_answer as string) ? (
+                <div className="mt-2 text-[11px] text-violet-200 italic">You said: &ldquo;{data.week_ahead_answer as string}&rdquo;</div>
+              ) : (
+                <div className="mt-2 flex gap-2">
+                  <input value={weekAnswer} onChange={e => setWeekAnswer(e.target.value)}
+                    placeholder="One sentence is plenty…"
+                    className="flex-1 px-3 py-2 rounded-xl text-[11px] text-gray-800 bg-white/90 placeholder-gray-400 focus:outline-none" />
+                  <button onClick={sendWeekAnswer} disabled={sendingAnswer || !weekAnswer.trim()}
+                    className="text-[11px] font-bold px-3 py-2 rounded-xl bg-white text-violet-700 disabled:opacity-50 transition">
+                    {sendingAnswer ? '…' : 'Send'}
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
