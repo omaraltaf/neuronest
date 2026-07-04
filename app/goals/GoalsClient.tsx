@@ -22,10 +22,86 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string 
   paused:      { label: 'Paused',      color: '#9CA3AF', dot: '#9CA3AF' },
 }
 
-export default function GoalsClient({ child, goals, recentLogs, filterArea }: {
+function GoalProposalCard({ proposal, sourceGoalLabel, onResolved }: {
+  proposal: Record<string, unknown>
+  sourceGoalLabel: string
+  onResolved: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const [resolving, setResolving] = useState<string | null>(null)
+  const data = proposal.proposal as Record<string, unknown>
+  const goal = data.next_goal as Record<string, unknown>
+
+  const resolve = async (action: 'approve' | 'dismiss') => {
+    setResolving(action)
+    try {
+      await fetch('/api/goal-proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proposalId: proposal.id, action }),
+      })
+      onResolved()
+    } finally {
+      setResolving(null)
+    }
+  }
+
+  return (
+    <div className="bg-gradient-to-br from-emerald-600 to-teal-600 text-white rounded-2xl px-4 py-4 shadow-md shadow-emerald-200">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl">🏆</span>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] font-bold text-emerald-100 uppercase tracking-wide">
+            &ldquo;{sourceGoalLabel}&rdquo; achieved · Dr. Santos suggests
+          </div>
+          <div className="font-black text-sm mt-0.5">{goal.label as string}</div>
+          {(data.celebration_message as string) && (
+            <p className="text-xs text-emerald-50 mt-1.5 leading-relaxed">🌟 {data.celebration_message as string}</p>
+          )}
+          <p className="text-xs text-emerald-100 mt-1.5 leading-relaxed">{data.progression_logic as string}</p>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mt-3 space-y-2 bg-white/10 rounded-xl p-3">
+          <div className="text-[11px] text-emerald-50"><span className="font-bold">Starting from:</span> {goal.baseline as string}</div>
+          <div className="text-[11px] text-emerald-50"><span className="font-bold">Success looks like:</span> {goal.target_criterion as string}</div>
+          <div className="text-[11px] text-emerald-50"><span className="font-bold">Approach:</span> {goal.approach as string}</div>
+          <div>
+            <div className="text-[11px] font-bold text-emerald-50 mb-1">Activities:</div>
+            <ul className="space-y-1">
+              {((goal.activities || []) as string[]).map((a, i) => (
+                <li key={i} className="text-[11px] text-emerald-50 leading-relaxed">• {a}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="text-[11px] text-emerald-100">⏱ Around {goal.timeline_weeks as number} weeks · {goal.evidence_base as string}</div>
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center gap-2">
+        <button onClick={() => resolve('approve')} disabled={!!resolving}
+          className="flex-1 text-xs font-bold px-3 py-2 rounded-full bg-white text-emerald-700 hover:bg-emerald-50 transition disabled:opacity-60">
+          {resolving === 'approve' ? 'Adding…' : '✓ Add this goal'}
+        </button>
+        <button onClick={() => setExpanded(e => !e)}
+          className="text-xs font-bold px-3 py-2 rounded-full bg-white/15 hover:bg-white/25 transition">
+          {expanded ? 'Less ↑' : 'Details ↓'}
+        </button>
+        <button onClick={() => resolve('dismiss')} disabled={!!resolving}
+          className="text-xs font-semibold px-3 py-2 rounded-full text-emerald-100 hover:text-white transition disabled:opacity-60">
+          {resolving === 'dismiss' ? '…' : 'Not now'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default function GoalsClient({ child, goals, recentLogs, proposals, filterArea }: {
   child: Record<string, unknown>
   goals: Record<string, unknown>[]
   recentLogs: Record<string, unknown>[]
+  proposals: Record<string, unknown>[]
   filterArea: string | null
 }) {
   const router = useRouter()
@@ -115,6 +191,17 @@ export default function GoalsClient({ child, goals, recentLogs, filterArea }: {
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-3 pb-12">
+        {/* Pending next-goal proposals (Goal Progression Engine) */}
+        {proposals.map(p => {
+          const sourceGoal = goals.find(g => g.id === p.source_goal_id)
+          return (
+            <GoalProposalCard key={p.id as string}
+              proposal={p}
+              sourceGoalLabel={(sourceGoal?.label as string) || 'Goal'}
+              onResolved={() => router.refresh()} />
+          )
+        })}
+
         {filteredGoals.length === 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
             <div className="text-3xl mb-3">🎯</div>
