@@ -718,6 +718,7 @@ function ContentContent() {
         supabase.from('children').select('*').eq('id', childId).single(),
         supabase.from('goals').select('*').eq('child_id', childId).neq('status', 'achieved'),
         supabase.from('generated_content').select('*').eq('child_id', childId)
+          .neq('content_type', 'child_zone_cards') // internal Child Zone cache, not library content
           .order('generated_at', { ascending: false }),
       ])
       if (c) setChild(c)

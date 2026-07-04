@@ -329,10 +329,11 @@ function SongActivity({ onExit, childName, onStar }: { onExit: () => void; child
 }
 
 // ── Home screen ────────────────────────────────────────────────────────────────
-function HomeScreen({ childName, stars, onStart }: {
+function HomeScreen({ childName, stars, onStart, myWordsLabel }: {
   childName: string
   stars: number
   onStart: (gameId: string) => void
+  myWordsLabel: string | null
 }) {
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #4F46E5 0%, #7C3AED 50%, #A855F7 100%)' }}>
@@ -351,6 +352,14 @@ function HomeScreen({ childName, stars, onStart }: {
 
       {/* Game grid */}
       <div className="px-4 grid grid-cols-2 gap-3 pb-8">
+        {/* "My Words" — the child's goal vocabulary, always first when available */}
+        {myWordsLabel && (
+          <button onClick={() => onStart('my-words')}
+            className="rounded-3xl p-5 text-center bg-gradient-to-br from-yellow-300 to-amber-400 active:scale-95 transition-transform shadow-lg col-span-2 border-2 border-white/40">
+            <div className="text-5xl mb-2">⭐</div>
+            <div className="font-black text-white text-base">{myWordsLabel}</div>
+          </button>
+        )}
         {GAME_MODES.map(game => (
           <button key={game.id} onClick={() => onStart(game.id)}
             className={`rounded-3xl p-5 text-center bg-gradient-to-br ${game.bg} active:scale-95 transition-transform shadow-lg`}>
@@ -372,6 +381,7 @@ function ChildZoneContent() {
   const [childName, setChildName] = useState('')
   const [stars, setStars] = useState(0)
   const [activeGame, setActiveGame] = useState<string | null>(null)
+  const [goalCards, setGoalCards] = useState<{ setLabel: string; cards: typeof CARD_SETS[string] } | null>(null)
 
   useEffect(() => {
     if (!childId) return
@@ -379,6 +389,21 @@ function ChildZoneContent() {
       .then(({ data }) => { if (data) setChildName(data.name) })
     supabase.from('app_state').select('total_stars').eq('child_id', childId).maybeSingle()
       .then(({ data }) => { if (data) setStars(data.total_stars || 0) })
+    // "My Words" — cards generated from the child's active goals (CLAUDE.md §5.5).
+    // Served from cache when goals are unchanged; regenerated server-side otherwise.
+    fetch(`/api/child-zone-cards?child=${childId}`)
+      .then(res => res.json())
+      .then(({ cards }) => {
+        if (cards?.cards?.length) {
+          setGoalCards({
+            setLabel: cards.set_label || 'My Words',
+            cards: cards.cards.map((c: { emoji: string; word: string; sound: string; colour: string }) => ({
+              emoji: c.emoji, word: c.word, sound: c.sound, colour: c.colour,
+            })),
+          })
+        }
+      })
+      .catch(() => {}) // generic sets still work if generation is unavailable
   }, [childId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const addStar = async () => {
@@ -388,14 +413,17 @@ function ChildZoneContent() {
   }
 
   if (!activeGame) {
-    return <HomeScreen childName={childName} stars={stars} onStart={setActiveGame} />
+    return <HomeScreen childName={childName} stars={stars} onStart={setActiveGame}
+      myWordsLabel={goalCards?.setLabel || null} />
   }
 
   if (activeGame === 'songs') {
     return <SongActivity onExit={() => setActiveGame(null)} childName={childName} onStar={addStar} />
   }
 
-  const cards = CARD_SETS[activeGame] || CARD_SETS.animals
+  const cards = activeGame === 'my-words' && goalCards
+    ? goalCards.cards
+    : CARD_SETS[activeGame] || CARD_SETS.animals
   return (
     <FlashcardGame
       cards={cards}
