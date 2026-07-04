@@ -114,6 +114,13 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, filte
   const [logRating, setLogRating] = useState(3)
   const [logging, setLogging] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+  const [coaching, setCoaching] = useState<{
+    loading: boolean
+    logId: string
+    data: { empathy: string; follow_up_question: string; technique_adjustment: string; pattern_insight: string } | null
+  } | null>(null)
+  const [coachAnswer, setCoachAnswer] = useState('')
+  const [sendingAnswer, setSendingAnswer] = useState(false)
 
   const areas = Array.from(new Set(goals.map(g => g.area as string)))
   const filteredGoals = filterArea ? goals.filter(g => g.area === filterArea) : goals
@@ -123,18 +130,50 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, filte
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     const goal = goals.find(g => g.id === goalId)
-    await supabase.from('session_logs').insert({
+    const { data: savedLog } = await supabase.from('session_logs').insert({
       child_id: childId, user_id: user.id, goal_id: goalId,
       activity_title: goal?.label as string || 'Practice session',
       area: goal?.area as string || null,
       rating: logRating,
       notes: logNote || null,
       logged_at: new Date().toISOString(),
-    })
+    }).select('id').single()
+    const savedRating = logRating
+    const savedNote = logNote
     setLogging(false)
     setLogNote('')
     setSelectedGoal(null)
     router.refresh()
+
+    // Parent Coaching Loop (§5.4): a hard session gets a warm, specific response
+    // in the moment — not just a saved row.
+    if (savedRating <= 2 && savedLog) {
+      setCoaching({ loading: true, logId: savedLog.id as string, data: null })
+      try {
+        const res = await fetch('/api/coaching', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ childId, goalId, rating: savedRating, notes: savedNote }),
+        })
+        const { coaching: data } = await res.json()
+        if (data) setCoaching({ loading: false, logId: savedLog.id as string, data })
+        else setCoaching(null)
+      } catch {
+        setCoaching(null)
+      }
+    }
+  }
+
+  const sendCoachAnswer = async () => {
+    if (!coaching?.data || !coachAnswer.trim()) return
+    setSendingAnswer(true)
+    // Append Q&A to the log's notes — the check-in and weekly-planning agents read these
+    const { data: log } = await supabase.from('session_logs').select('notes').eq('id', coaching.logId).single()
+    const appended = `${log?.notes || ''}\n\n[Dr. Eriksson asked] ${coaching.data.follow_up_question}\n[Parent] ${coachAnswer.trim()}`.trim()
+    await supabase.from('session_logs').update({ notes: appended }).eq('id', coaching.logId)
+    setSendingAnswer(false)
+    setCoachAnswer('')
+    setCoaching(null)
   }
 
   const updateStatus = async (goalId: string, status: string) => {
@@ -157,6 +196,54 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, filte
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* In-the-moment coaching after a hard session (§5.4) */}
+      {coaching && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-5 shadow-2xl">
+            {coaching.loading ? (
+              <div className="text-center py-8">
+                <div className="text-4xl animate-pulse mb-3">💛</div>
+                <div className="text-sm text-gray-500">Dr. Eriksson is thinking about this one…</div>
+              </div>
+            ) : coaching.data && (
+              <>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center">👩‍⚕️</div>
+                  <div className="text-xs font-bold text-gray-900">Dr. Eriksson</div>
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed">{coaching.data.empathy}</p>
+                {coaching.data.pattern_insight && (
+                  <div className="mt-3 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
+                    <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wide mb-0.5">Something I&apos;ve noticed</div>
+                    <p className="text-xs text-amber-800 leading-relaxed">{coaching.data.pattern_insight}</p>
+                  </div>
+                )}
+                <div className="mt-3 bg-violet-50 rounded-xl px-3 py-2.5">
+                  <div className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-0.5">Try this next time</div>
+                  <p className="text-xs text-violet-900 leading-relaxed">{coaching.data.technique_adjustment}</p>
+                </div>
+                <div className="mt-4">
+                  <p className="text-sm font-semibold text-gray-900 leading-relaxed">{coaching.data.follow_up_question}</p>
+                  <textarea value={coachAnswer} onChange={e => setCoachAnswer(e.target.value)}
+                    placeholder="One sentence is plenty…" rows={2}
+                    className="mt-2 w-full px-3 py-2 rounded-xl border border-gray-200 text-xs resize-none focus:outline-none focus:border-violet-400 transition" />
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button onClick={sendCoachAnswer} disabled={sendingAnswer || !coachAnswer.trim()}
+                    className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition">
+                    {sendingAnswer ? 'Sending…' : 'Send to Dr. Eriksson'}
+                  </button>
+                  <button onClick={() => { setCoaching(null); setCoachAnswer('') }}
+                    className="px-4 py-2.5 text-xs font-semibold text-gray-400 hover:text-gray-600 transition">
+                    Skip
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">

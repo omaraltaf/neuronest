@@ -8,7 +8,7 @@
 // fires a notification.
 //
 // Runs here (not on Vercel) because the service-role key is auto-injected and pg_cron can
-// invoke it directly. NOT auto-deployed from git — after editing, redeploy via the Supabase
+// invoke it directly. NOT auto-deployed from git — after editing, redeploy manually via the Supabase
 // MCP deploy_edge_function tool or `supabase functions deploy weekly-focus`, keeping
 // verify_jwt: false (pg_cron and the Vercel route authenticate via x-cron-secret instead).
 //
@@ -55,7 +55,7 @@ YOUR CLINICAL FRAME (NDBI — Naturalistic Developmental Behavioral Intervention
 
 FOLLOW THESE REASONING STEPS IN ORDER:
 1. READ THE DATA. What actually happened in the last 14 days? Count sessions, note ratings, read the check-in wins/challenges/recommendations, note which goals got attention and which were untouched. Note whether previous weekly focuses were acted on. If there is little or no data, that is itself the finding — the focus becomes re-entry, made as small and winnable as possible.
-2. FIND THE SIGNAL. Pick the single most important pattern: a win to build on (momentum beats remediation), a goal that's stalled, a technique the parent is struggling with (low ratings), or a gap (active goal with zero practice). Prefer building on what's working over fixing what isn't, unless something is clearly blocking progress.
+2. FIND THE SIGNAL. Pick the single most important pattern: a win to build on (momentum beats remediation), a goal that's stalled, a technique the parent is struggling with (low ratings), or a gap (active goal with zero practice). Prefer building on what's working over fixing what isn't, unless something is clearly blocking progress. Separately: if low-rated sessions share a signature (same time of day, same goal, same struggle in the notes — including [Dr. Eriksson asked]/[Parent] exchanges), name that pattern explicitly in pattern_insight as a coaching insight, not raw data ("sessions after 5pm tend to be the hard ones — her regulation tank is empty by then"). If no genuine pattern exists, pattern_insight is an empty string. Never invent one.
 3. CHOOSE ONE FOCUS. One pivotal behavior, tied to 1-2 active goals. Not a list. A parent who is told to focus on everything focuses on nothing.
 4. DESIGN THE WEEK. One 5-minute starter activity (doable tonight, with things already in the house, using the child's actual interests from their profile). 2-4 embed opportunities inside the family's existing routines. One concrete technique tip that coaches HOW the parent interacts (prompt level, wait time, following the child's lead, reinforcement timing) — not just WHAT to do.
 5. CELEBRATE SOMETHING REAL. Find one specific thing from the actual data (a logged session, a check-in win, a streak) and name it concretely. Never generic praise. If the week was empty, warmly acknowledge that starting again is the win being set up.
@@ -78,7 +78,7 @@ const FOCUS_SCHEMA = {
   required: [
     'focus_title', 'focus_reason', 'primary_goal_ids', 'pivotal_behavior', 'celebrate',
     'coaching_tip', 'starter_activity', 'embed_opportunities', 'watch_for',
-    'week_ahead_question', 'notification_body',
+    'week_ahead_question', 'notification_body', 'pattern_insight',
   ],
   properties: {
     focus_title: { type: 'string', description: 'Parent-facing focus for the week, max ~60 chars, no jargon' },
@@ -124,6 +124,7 @@ const FOCUS_SCHEMA = {
     watch_for: { type: 'string', description: 'One thing to observe and note this week' },
     week_ahead_question: { type: 'string', description: 'One warm question about the upcoming week to surface naturalistic opportunities' },
     notification_body: { type: 'string', description: 'Push-style summary under 200 chars' },
+    pattern_insight: { type: 'string', description: 'Named pattern across low-rated sessions as a coaching insight, or empty string if none' },
   },
 }
 

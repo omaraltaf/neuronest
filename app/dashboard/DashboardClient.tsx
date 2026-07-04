@@ -115,6 +115,12 @@ function WeeklyFocusCard({ childId, focus }: { childId: string; focus: Record<st
               ))}
             </div>
           )}
+          {(data.pattern_insight as string) && (
+            <div className="bg-white/10 rounded-xl p-3">
+              <div className="text-xs font-bold">🔍 Something I&apos;ve noticed</div>
+              <div className="text-[11px] text-violet-50 mt-1 leading-relaxed">{data.pattern_insight as string}</div>
+            </div>
+          )}
           {(data.watch_for as string) && (
             <div className="text-[11px] text-violet-100">👀 Watch for: {data.watch_for as string}</div>
           )}
