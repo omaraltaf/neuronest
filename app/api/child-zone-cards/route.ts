@@ -20,12 +20,14 @@ const CARDS_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['emoji', 'word', 'sound', 'colour', 'goal_link'],
+        required: ['emoji', 'word', 'sound', 'word_class', 'colour', 'symbol_description', 'goal_link'],
         properties: {
           emoji: { type: 'string', description: 'Exactly one widely-supported emoji' },
           word: { type: 'string', description: "At the child's language level, in their language" },
           sound: { type: 'string', description: 'Playful phrase the parent says aloud' },
-          colour: { type: 'string', description: 'Hex colour from the allowed palette' },
+          word_class: { type: 'string', enum: ['person', 'action', 'describing', 'thing', 'social', 'question'], description: 'Fitzgerald Key word class' },
+          colour: { type: 'string', description: 'Hex matching the Fitzgerald Key class exactly' },
+          symbol_description: { type: 'string', description: 'One-line AAC symbol scene (Widgit/Boardmaker style), concept only, no child depicted' },
           goal_link: { type: 'string', description: 'One parent-facing sentence tying the card to its goal' },
         },
       },
@@ -64,7 +66,7 @@ export async function GET(req: NextRequest) {
 
   const cachedData = cached?.content_data as { goals_hash?: string } | null
   if (cached && cachedData?.goals_hash === hash) {
-    return NextResponse.json({ cards: cached.content_data })
+    return NextResponse.json({ cards: cached.content_data, contentId: cached.id })
   }
 
   // Stale or missing → regenerate from the current goals
@@ -105,25 +107,27 @@ ${JSON.stringify(goals)}
   if (!response.ok) {
     console.error('child-zone-cards generation failed:', await response.text())
     // Serve the stale set rather than nothing — the Child Zone must never break for a child
-    return NextResponse.json({ cards: cached?.content_data || null })
+    return NextResponse.json({ cards: cached?.content_data || null, contentId: cached?.id || null })
   }
 
   const result = await response.json()
   if (result.stop_reason === 'refusal') {
     console.error('child-zone-cards: model refusal')
-    return NextResponse.json({ cards: cached?.content_data || null })
+    return NextResponse.json({ cards: cached?.content_data || null, contentId: cached?.id || null })
   }
   const text = result.content?.find((b: { type: string }) => b.type === 'text')?.text
-  if (!text) return NextResponse.json({ cards: cached?.content_data || null })
+  if (!text) return NextResponse.json({ cards: cached?.content_data || null, contentId: cached?.id || null })
 
   const generated = { ...JSON.parse(text), goals_hash: hash, generated_at: new Date().toISOString() }
 
+  let contentId: string | null = null
   if (cached) {
     await supabase.from('generated_content')
       .update({ content_data: generated, generated_at: new Date().toISOString() })
       .eq('id', cached.id)
+    contentId = cached.id as string
   } else {
-    await supabase.from('generated_content').insert({
+    const { data: inserted } = await supabase.from('generated_content').insert({
       child_id: childId,
       user_id: user.id,
       content_type: 'child_zone_cards',
@@ -131,10 +135,22 @@ ${JSON.stringify(goals)}
       content_data: generated,
       language: (child.language as string) || 'en',
       active: true,
-    })
+    }).select('id').single()
+    contentId = (inserted?.id as string) || null
   }
 
-  return NextResponse.json({ cards: generated })
+  // AAC symbol images (Widgit/Boardmaker style) generate in the background on Supabase —
+  // the Edge Function ACKs immediately and works via waitUntil. Emoji is the fallback
+  // until images land, so this never blocks the child.
+  if (contentId && process.env.WEEKLY_FOCUS_CRON_SECRET) {
+    fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-card-images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-cron-secret': process.env.WEEKLY_FOCUS_CRON_SECRET },
+      body: JSON.stringify({ content_id: contentId }),
+    }).catch(err => console.error('card image trigger failed:', err))
+  }
+
+  return NextResponse.json({ cards: generated, contentId })
 }
 
 export const maxDuration = 60

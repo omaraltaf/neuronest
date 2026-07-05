@@ -134,7 +134,7 @@ function CelebrationBurst({ onDone }: { onDone: () => void }) {
 function FlashcardGame({
   cards, childName, onStar, onExit,
 }: {
-  cards: { emoji: string; word: string; sound: string; colour: string }[]
+  cards: { emoji: string; word: string; sound: string; colour: string; image?: string }[]
   childName: string
   onStar: () => void
   onExit: () => void
@@ -215,10 +215,21 @@ function FlashcardGame({
           <div className="rounded-3xl shadow-2xl overflow-hidden"
             style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)' }}>
 
-            {/* Giant emoji */}
-            <div className="flex items-center justify-center py-10">
-              <span style={{ fontSize: '120px', lineHeight: 1 }}>{card.emoji}</span>
-            </div>
+            {/* AAC symbol when generated (white panel, like a real communication card);
+                giant emoji until then */}
+            {card.image ? (
+              <div className="flex items-center justify-center pt-8 pb-2 px-8">
+                <div className="bg-white rounded-3xl p-3 shadow-inner">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={card.image} alt={card.word}
+                    style={{ width: 180, height: 180, objectFit: 'contain' }} />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-10">
+                <span style={{ fontSize: '120px', lineHeight: 1 }}>{card.emoji}</span>
+              </div>
+            )}
 
             {/* Word — only shown after tap */}
             <div className="pb-8 px-4 text-center min-h-[80px] flex flex-col items-center justify-center">
@@ -381,7 +392,10 @@ function ChildZoneContent() {
   const [childName, setChildName] = useState('')
   const [stars, setStars] = useState(0)
   const [activeGame, setActiveGame] = useState<string | null>(null)
-  const [goalCards, setGoalCards] = useState<{ setLabel: string; cards: typeof CARD_SETS[string] } | null>(null)
+  const [goalCards, setGoalCards] = useState<{
+    setLabel: string
+    cards: { emoji: string; word: string; sound: string; colour: string; image?: string }[]
+  } | null>(null)
 
   useEffect(() => {
     if (!childId) return
@@ -389,19 +403,31 @@ function ChildZoneContent() {
       .then(({ data }) => { if (data) setChildName(data.name) })
     supabase.from('app_state').select('total_stars').eq('child_id', childId).maybeSingle()
       .then(({ data }) => { if (data) setStars(data.total_stars || 0) })
-    // "My Words" — cards generated from the child's active goals (CLAUDE.md §5.5).
+    // "My Words" — cards generated from the child's active goals (CLAUDE.md §5.5),
+    // Fitzgerald-coloured, with AAC symbol images when generated (emoji until then).
     // Served from cache when goals are unchanged; regenerated server-side otherwise.
     fetch(`/api/child-zone-cards?child=${childId}`)
       .then(res => res.json())
-      .then(({ cards }) => {
-        if (cards?.cards?.length) {
-          setGoalCards({
-            setLabel: cards.set_label || 'My Words',
-            cards: cards.cards.map((c: { emoji: string; word: string; sound: string; colour: string }) => ({
-              emoji: c.emoji, word: c.word, sound: c.sound, colour: c.colour,
-            })),
-          })
+      .then(async ({ cards, contentId }) => {
+        if (!cards?.cards?.length) return
+        // AAC symbol images live in the shared story_images cache, keyed by card index
+        const imageByIndex: Record<number, string> = {}
+        if (contentId) {
+          const { data: images } = await supabase.from('story_images')
+            .select('sentence_index, storage_path').eq('content_id', contentId)
+          for (const img of images || []) {
+            const { data: urlData } = supabase.storage
+              .from('neuronest-documents').getPublicUrl(img.storage_path as string)
+            imageByIndex[img.sentence_index as number] = urlData.publicUrl
+          }
         }
+        setGoalCards({
+          setLabel: cards.set_label || 'My Words',
+          cards: cards.cards.map((c: { emoji: string; word: string; sound: string; colour: string }, i: number) => ({
+            emoji: c.emoji, word: c.word, sound: c.sound, colour: c.colour,
+            image: imageByIndex[i],
+          })),
+        })
       })
       .catch(() => {}) // generic sets still work if generation is unavailable
   }, [childId]) // eslint-disable-line react-hooks/exhaustive-deps

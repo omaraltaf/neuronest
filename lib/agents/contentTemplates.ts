@@ -105,6 +105,11 @@ Interests: ${(child.interests as string[] || []).join(', ') || 'general'}
 
 Create 8 flashcards. Make them visually engaging and embed ${child.name}'s interests where possible.
 
+AAC STANDARDS (non-negotiable — these children often already use AAC/ASK symbols at school):
+- One concept per card, zero visual clutter.
+- Card "colour" follows the modified Fitzgerald Key by word class — never decorative:
+  people #F59E0B (yellow) · actions/verbs #16A34A (green) · describing words #5B7FE8 (blue) · things/nouns #F97316 (orange) · social words #DB2777 (pink) · question words #7C3AED (purple)
+
 Return JSON:
 {
   "title": "set title",

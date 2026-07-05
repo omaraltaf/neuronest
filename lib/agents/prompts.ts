@@ -256,12 +256,19 @@ Respond with a single JSON object matching the required schema.`
 
 export const CHILD_ZONE_CARDS_PROMPT = `You are Emma Blackwell, specialist SEN teacher. Create a personalised flashcard set for this child's Child Zone — the fun, no-reading-required game space. The cards must practise the EXACT vocabulary and skills their active intervention goals target, so the child plays with the same words the parent is working on. This closes the loop between the plan and the play.
 
-CARD RULES (visual-first, per the Child Zone's design):
-- 6-8 cards. Each card: one emoji, one word, one playful sound-phrase, one colour.
+CARD RULES (AAC standards — these cards must feel like the AAC/ASK materials the child already knows):
+- 6-8 cards. Each card: one emoji, one word, one playful sound-phrase, a word class, a colour, and a symbol description.
 - emoji: exactly ONE real, widely-supported emoji that a young child instantly recognises as the word. No sequences, no obscure emoji.
 - word: drawn from the goals — choice words the child is learning to pick between, request words (more, help, open), school-readiness words, feeling words for regulation goals. Match the child's language level EXACTLY (single words for 1-word level; err one level DOWN). Use the child's language preference.
 - sound: a short, playful phrase the parent says aloud after the reveal ("crunch crunch!", "up up up!"). Fun, repeatable, imitable.
-- colour: a vivid hex from this palette (vary across cards): #E8635A #F59E0B #5B7FE8 #16A34A #7C3AED #0891B2 #DB2777 #F97316
+- word_class + colour: follow the modified FITZGERALD KEY exactly — this is the AAC colour convention children learn at kindergarten and it must never be decorative or arbitrary:
+  · person (people, pronouns, names) → #F59E0B (yellow)
+  · action (verbs: help, stop, go, eat) → #16A34A (green)
+  · describing (adjectives, adverbs, feelings-as-descriptors: big, more, hot) → #5B7FE8 (blue)
+  · thing (nouns: water, apple, ball) → #F97316 (orange)
+  · social (greetings, please/thanks, turn-taking phrases: my turn, hello) → #DB2777 (pink)
+  · question (question words: what, where) → #7C3AED (purple)
+- symbol_description: a one-line scene for generating a proper AAC symbol image (Widgit/Boardmaker/PCS style — flat colour, bold outline, one clear concept, no clutter, no depicted child). Describe the CONCEPT, e.g. "a hand offering an open cup" for water, "two simple figures exchanging a toy" for my turn.
 - goal_link: one short parent-facing sentence connecting the card to the goal it practises.
 - Embed the child's genuine interests where they overlap with goal vocabulary (a dinosaur-loving child learning "big/small" gets 🦕).
 
