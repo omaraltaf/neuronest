@@ -53,7 +53,8 @@ Replace X with updated confidence values 0-100. Set ready_for_synthesis to true 
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-5',
+        thinking: { type: 'disabled' },
         max_tokens: 1200,
         system: `${INTAKE_AGENT_PROMPT}\n\n${childContext || ''}${confidenceContext}`,
         messages: apiMessages,

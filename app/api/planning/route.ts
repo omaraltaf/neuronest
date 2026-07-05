@@ -91,7 +91,8 @@ Use the ---PLAN_JSON--- format. After the plan, ask: "Does this address what you
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-5',
+          thinking: { type: 'disabled' },
           max_tokens: 3000,
           system: `${PLANNING_AGENT_PROMPT}\n\n${JSON_INSTRUCTION}`,
           messages: [{ role: 'user', content: userContent }],
@@ -141,7 +142,8 @@ Instructions:
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-5',
+        thinking: { type: 'disabled' },
         max_tokens: 4000,
         system: systemPrompt,
         messages: history,

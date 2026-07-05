@@ -132,6 +132,8 @@ Notifications currently exist for streaks and achievements, but the framing shou
 
 **Middleware:** `/api/*` routes are fully excluded from the auth middleware matcher (`matcher: ['/((?!api/|_next/static|...).*)"]`). This was necessary because the auth-check-then-redirect logic was redirecting unauthenticated image requests (e.g. `<img src="/api/images">`, which sends no auth cookie) to `/login`, which Vercel then serves as a 404 for what should be an image response. If you add new API routes that need to work from `<img>` tags or other credential-less contexts, they're already covered by this exclusion — don't add per-route workarounds.
 
+**Model retirements can silently kill the chat agents.** On 2026-07-05 every conversational agent (intake, planning, profile, check-in, AI chat, content, document extraction — 11 call sites) was found broken in production because `claude-sonnet-4-20250514` had been retired by Anthropic (404) — nothing alerted; chats just failed. All sites now use `claude-sonnet-5` with `thinking: {type: 'disabled'}` (Sonnet 5 runs adaptive thinking by default when the field is omitted, which would eat the tuned max_tokens budgets). When Anthropic announces deprecations, migrate BEFORE the retirement date; the Phase-4 agents (`weekly-focus`, `goal-progression`, `/api/coaching`, `/api/child-zone-cards`) each have env-var model overrides for this.
+
 **Content page file integrity:** `app/content/page.tsx` is large (900+ lines) and has been accidentally corrupted twice during this project by imprecise find-and-replace operations (header imports got dropped, function boundaries got mismatched). If editing this file, view it fully first and make surgical, verified edits — don't do broad regex replacements across the whole file.
 
 ---
