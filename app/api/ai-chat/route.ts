@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveModel } from '@/lib/agents/models'
 
 export async function POST(req: NextRequest) {
   const { messages, childContext } = await req.json()
@@ -21,7 +22,7 @@ For Norwegian families, you know Norwegian special education law (Opplæringslov
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-5',
+        model: await resolveModel('standard'),
         thinking: { type: 'disabled' },
         max_tokens: 1000,
         system,

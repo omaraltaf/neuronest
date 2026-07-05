@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveModel } from '@/lib/agents/models'
 import { INTAKE_AGENT_PROMPT } from '@/lib/agents/prompts'
 import type { ChatMessage } from '@/types'
 
@@ -61,7 +62,7 @@ Only output UPDATED_SECTION if there is genuinely new information that changes t
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-5',
+        model: await resolveModel('standard'),
         thinking: { type: 'disabled' },
         max_tokens: 1500,
         system: systemPrompt,

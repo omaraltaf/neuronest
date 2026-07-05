@@ -164,12 +164,16 @@ ${JSON.stringify(otherGoals || [])}
 ${JSON.stringify(checkins || [])}
 `.trim()
 
-    const model = Deno.env.get('GOAL_PROGRESSION_MODEL') || DEFAULT_MODEL
     const anthropic = new Anthropic({ apiKey: await getAnthropicKey() })
 
-    const isFable = model === 'claude-fable-5'
-    const request: Record<string, unknown> = {
-      model,
+    // Model chain: preferred → Opus → Sonnet. A 404 means the model was RETIRED by
+    // Anthropic — advance down the chain instead of failing (2026-07-05 lesson).
+    const modelChain = [...new Set([
+      Deno.env.get('GOAL_PROGRESSION_MODEL') || DEFAULT_MODEL,
+      FALLBACK_MODEL,
+      'claude-sonnet-5',
+    ])]
+    const { response, model } = await createWithModelFallback(anthropic, modelChain, {
       max_tokens: 16000,
       system: GOAL_PROGRESSION_AGENT_PROMPT,
       messages: [{ role: 'user', content: context }],
@@ -177,15 +181,7 @@ ${JSON.stringify(checkins || [])}
         effort: 'high',
         format: { type: 'json_schema', schema: PROPOSAL_SCHEMA },
       },
-    }
-    if (isFable) {
-      request.betas = ['server-side-fallback-2026-06-01']
-      request.fallbacks = [{ model: FALLBACK_MODEL }]
-    }
-
-    const response = isFable
-      ? await anthropic.beta.messages.create(request as never)
-      : await anthropic.messages.create(request as never)
+    })
 
     if (response.stop_reason === 'refusal') {
       throw new Error('model declined the request (stop_reason: refusal)')
@@ -225,6 +221,39 @@ ${JSON.stringify(checkins || [])}
     return json({ error: String(err) }, 500)
   }
 })
+
+// Try each model in the chain; on 404 (retired model) advance to the next. Fable-class
+// models take their special request shape (no thinking param, refusal fallback beta).
+async function createWithModelFallback(
+  anthropic: Anthropic,
+  chain: string[],
+  base: Record<string, unknown>,
+): Promise<{ response: { stop_reason?: string; content?: unknown; model?: string }; model: string }> {
+  let lastErr: unknown
+  for (const model of chain) {
+    const isFable = model === 'claude-fable-5'
+    const request: Record<string, unknown> = { ...base, model }
+    if (isFable) {
+      request.betas = ['server-side-fallback-2026-06-01']
+      request.fallbacks = [{ model: FALLBACK_MODEL }]
+    }
+    try {
+      const response = isFable
+        ? await anthropic.beta.messages.create(request as never)
+        : await anthropic.messages.create(request as never)
+      return { response: response as never, model }
+    } catch (err) {
+      const status = (err as { status?: number })?.status
+      if (status === 404) {
+        console.error(`model ${model} not found (retired?) — falling back`)
+        lastErr = err
+        continue
+      }
+      throw err
+    }
+  }
+  throw lastErr
+}
 
 // Secrets: env var first, else Vault via the service-role-locked neuronest.get_secret RPC.
 const secretCache: Record<string, string> = {}

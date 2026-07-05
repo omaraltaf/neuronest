@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveModel } from '@/lib/agents/models'
 import { createClient } from '@/lib/supabase/server'
 import { SESSION_COACH_PROMPT } from '@/lib/agents/prompts'
 
@@ -63,7 +64,7 @@ ${JSON.stringify(recentLogs || [])}
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: process.env.SESSION_COACH_MODEL || 'claude-opus-4-8',
+      model: process.env.SESSION_COACH_MODEL || await resolveModel('standard'),
       max_tokens: 1500,
       system: SESSION_COACH_PROMPT,
       messages: [{ role: 'user', content: context }],

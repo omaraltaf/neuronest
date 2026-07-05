@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveModel } from '@/lib/agents/models'
 import { CONTENT_AGENT_PROMPT } from '@/lib/agents/prompts'
 import { TYPE_PROMPTS, VISUAL_INSTRUCTION } from '@/lib/agents/contentTemplates'
 
@@ -48,7 +49,7 @@ Return ONLY valid JSON — no markdown, no explanation.`
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-5',
+        model: await resolveModel('standard'),
         thinking: { type: 'disabled' },
         max_tokens: 3000,
         system: CONTENT_AGENT_PROMPT,

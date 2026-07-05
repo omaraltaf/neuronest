@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveModel } from '@/lib/agents/models'
 import { PROGRESS_AGENT_PROMPT } from '@/lib/agents/prompts'
 import type { ChatMessage } from '@/types'
 
@@ -58,7 +59,7 @@ OUTPUT FORMAT — CRITICAL:
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-5',
+      model: await resolveModel('standard'),
       thinking: { type: 'disabled' },
       max_tokens: 1200,
       system,

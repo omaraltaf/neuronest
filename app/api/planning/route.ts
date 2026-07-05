@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveModel } from '@/lib/agents/models'
 import { PLANNING_AGENT_PROMPT } from '@/lib/agents/prompts'
 import type { ChatMessage } from '@/types'
 
@@ -91,7 +92,7 @@ Use the ---PLAN_JSON--- format. After the plan, ask: "Does this address what you
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-5',
+          model: await resolveModel('standard'),
           thinking: { type: 'disabled' },
           max_tokens: 3000,
           system: `${PLANNING_AGENT_PROMPT}\n\n${JSON_INSTRUCTION}`,
@@ -142,7 +143,7 @@ Instructions:
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-5',
+        model: await resolveModel('standard'),
         thinking: { type: 'disabled' },
         max_tokens: 4000,
         system: systemPrompt,

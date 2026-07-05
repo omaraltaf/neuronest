@@ -80,13 +80,20 @@ async function processCards(contentId: string, childId: string, cards: Record<st
       const prompt = buildAacPrompt(cards[i])
       console.log(`card ${i}: ${prompt}`)
 
+      // Generate + vision-QA loop: Imagen occasionally returns a garbled spec sheet or
+      // a photorealistic photo (both HTTP 200 — see CLAUDE.md §6), so every candidate
+      // is judged by a fast vision model before being saved. No pass → no save; the
+      // emoji fallback in the UI covers the gap.
       let b64: string | null = null
       for (let attempt = 0; attempt < 3; attempt++) {
-        if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt))
-        b64 = await tryImagen(prompt, GEMINI_KEY)
-        if (b64) break
+        if (attempt > 0) await new Promise(r => setTimeout(r, 1500))
+        const candidate = await tryImagen(prompt, GEMINI_KEY)
+        if (!candidate) continue
+        const verdict = await qaSymbol(candidate, cards[i].word)
+        if (verdict.pass) { b64 = candidate; break }
+        console.error(`card ${i} attempt ${attempt + 1}: QA rejected — ${verdict.reason}`)
       }
-      if (!b64) { console.error(`card ${i}: failed`); continue }
+      if (!b64) { console.error(`card ${i}: no QA-passing image after 3 attempts`); continue }
 
       const storagePath = `card-images/${childId}/${contentId}/${i}.png`
       const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
@@ -117,6 +124,55 @@ async function processCards(contentId: string, childId: string, cards: Record<st
 function buildAacPrompt(card: Record<string, string>): string {
   const scene = card.symbol_description || `${card.word}`
   return `A very simple flat cartoon pictogram for a children's picture communication card, showing ${scene}. The drawing has thick black outlines and solid bright colours on a pure white background, drawn in the plain minimal style of Widgit and Boardmaker pictograms. The image contains only this one centred drawing and nothing else — no words, no labels, no borders.`
+}
+
+// Vision QA: a fast model looks at the generated image and decides whether it's a
+// usable AAC symbol. Fails open on QA-infrastructure errors (no QA ≠ bad image; that
+// was the behaviour before QA existed), fails closed on an actual rejection.
+const QA_MODELS = ['claude-haiku-4-5', 'claude-sonnet-5']
+async function qaSymbol(b64: string, word: string): Promise<{ pass: boolean; reason: string }> {
+  const key = await getSecret('ANTHROPIC_API_KEY')
+  if (!key) return { pass: true, reason: 'QA unavailable (no key) — accepted' }
+  for (const model of QA_MODELS) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 300,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: 'image/png', data: b64 } },
+              { type: 'text', text: `This image is meant to be a flat cartoon pictogram for a young child's AAC communication card meaning "${word}". Judge it. pass=true ONLY if ALL hold: it is a simple flat cartoon/pictogram (NOT a photograph, NOT photorealistic); it shows one clear concept a young child could read as "${word}"; the background is plain white or near-white; there is NO visible text, letters, numbers, labels, dimension lines, or diagram elements anywhere.` },
+            ],
+          }],
+          output_config: {
+            format: {
+              type: 'json_schema',
+              schema: {
+                type: 'object', additionalProperties: false, required: ['pass', 'reason'],
+                properties: { pass: { type: 'boolean' }, reason: { type: 'string' } },
+              },
+            },
+          },
+        }),
+      })
+      if (res.status === 404) { console.error(`QA model ${model} not found — trying next`); continue }
+      if (!res.ok) { console.error(`QA ${model} ${res.status}: ${(await res.text()).slice(0, 150)}`); continue }
+      const data = await res.json()
+      if (data.stop_reason === 'refusal') return { pass: true, reason: 'QA refusal — accepted' }
+      const text = data.content?.find((b: { type: string }) => b.type === 'text')?.text
+      if (!text) continue
+      return JSON.parse(text)
+    } catch (e) { console.error(`QA ${model}:`, e) }
+  }
+  return { pass: true, reason: 'QA infrastructure failed — accepted' }
 }
 
 async function tryImagen(prompt: string, key: string): Promise<string | null> {

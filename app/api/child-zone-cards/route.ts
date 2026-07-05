@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveModel } from '@/lib/agents/models'
 import { createClient } from '@/lib/supabase/server'
 import { CHILD_ZONE_CARDS_PROMPT } from '@/lib/agents/prompts'
 
@@ -93,7 +94,7 @@ ${JSON.stringify(goals)}
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: process.env.CHILD_ZONE_MODEL || 'claude-opus-4-8',
+      model: process.env.CHILD_ZONE_MODEL || await resolveModel('standard'),
       max_tokens: 4000,
       system: CHILD_ZONE_CARDS_PROMPT,
       messages: [{ role: 'user', content: context }],

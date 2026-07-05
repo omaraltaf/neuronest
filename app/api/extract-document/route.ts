@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveModel } from '@/lib/agents/models'
 
 const EXTRACTION_PROMPT = `You are Dr. Sarah Chen, a clinical psychologist specialising in ASD assessment.
 You have been given a document to analyse. Extract all clinically relevant information and return it as structured JSON.
@@ -146,7 +147,7 @@ export async function POST(req: NextRequest) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-5',
+        model: await resolveModel('standard'),
         thinking: { type: 'disabled' },
         max_tokens: 2000,
         system: EXTRACTION_PROMPT,

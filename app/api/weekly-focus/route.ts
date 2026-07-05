@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveModel } from '@/lib/agents/models'
 import { createClient } from '@/lib/supabase/server'
 import { CONTENT_AGENT_PROMPT, CONTENT_ANTICIPATION_PROMPT } from '@/lib/agents/prompts'
 import { TYPE_PROMPTS, VISUAL_INSTRUCTION } from '@/lib/agents/contentTemplates'
@@ -78,7 +79,7 @@ const DECISION_SCHEMA = {
 
 async function callClaude(system: string, prompt: string, options: { schema?: object; maxTokens?: number } = {}) {
   const body: Record<string, unknown> = {
-    model: process.env.CONTENT_ANTICIPATION_MODEL || 'claude-opus-4-8',
+    model: process.env.CONTENT_ANTICIPATION_MODEL || await resolveModel('standard'),
     max_tokens: options.maxTokens || 3000,
     system,
     messages: [{ role: 'user', content: prompt }],
