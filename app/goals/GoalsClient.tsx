@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import TabBar from '@/components/TabBar'
+import PracticeLogger from '@/components/PracticeLogger'
 
 const AREA_CONFIG: Record<string, { color: string; icon: string; bg: string }> = {
   communication: { color: '#E8635A', icon: '💬', bg: '#FFF5F5' },
@@ -12,6 +14,7 @@ const AREA_CONFIG: Record<string, { color: string; icon: string; bg: string }> =
   cognition:     { color: '#0891B2', icon: '🧩', bg: '#F0FBFF' },
   behaviour:     { color: '#D97706', icon: '⚖️', bg: '#FFFBF0' },
   school:        { color: '#DB2777', icon: '🏫', bg: '#FFF0F9' },
+  adaptive:      { color: '#0891B2', icon: '🧰', bg: '#F0FBFF' },
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
@@ -51,45 +54,45 @@ function GoalProposalCard({ proposal, sourceGoalLabel, onResolved }: {
       <div className="flex items-start gap-3">
         <span className="text-2xl">🏆</span>
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-bold text-emerald-100 uppercase tracking-wide">
-            &ldquo;{sourceGoalLabel}&rdquo; achieved · Dr. Santos suggests
+          <div className="text-xs font-bold text-emerald-100 uppercase tracking-wide">
+            &ldquo;{sourceGoalLabel}&rdquo; achieved · Dr. Santos — your planner — suggests
           </div>
-          <div className="font-black text-sm mt-0.5">{goal.label as string}</div>
+          <div className="font-black text-base mt-0.5">{goal.label as string}</div>
           {(data.celebration_message as string) && (
-            <p className="text-xs text-emerald-50 mt-1.5 leading-relaxed">🌟 {data.celebration_message as string}</p>
+            <p className="text-sm text-emerald-50 mt-1.5 leading-relaxed">🌟 {data.celebration_message as string}</p>
           )}
-          <p className="text-xs text-emerald-100 mt-1.5 leading-relaxed">{data.progression_logic as string}</p>
+          <p className="text-sm text-emerald-100 mt-1.5 leading-relaxed">{data.progression_logic as string}</p>
         </div>
       </div>
 
       {expanded && (
-        <div className="mt-3 space-y-2 bg-white/10 rounded-xl p-3">
-          <div className="text-[11px] text-emerald-50"><span className="font-bold">Starting from:</span> {goal.baseline as string}</div>
-          <div className="text-[11px] text-emerald-50"><span className="font-bold">Success looks like:</span> {goal.target_criterion as string}</div>
-          <div className="text-[11px] text-emerald-50"><span className="font-bold">Approach:</span> {goal.approach as string}</div>
+        <div className="mt-3 space-y-2 bg-white/10 rounded-xl p-3.5">
+          <div className="text-sm text-emerald-50"><span className="font-bold">Starting from:</span> {goal.baseline as string}</div>
+          <div className="text-sm text-emerald-50"><span className="font-bold">Success looks like:</span> {goal.target_criterion as string}</div>
+          <div className="text-sm text-emerald-50"><span className="font-bold">Approach:</span> {goal.approach as string}</div>
           <div>
-            <div className="text-[11px] font-bold text-emerald-50 mb-1">Activities:</div>
+            <div className="text-sm font-bold text-emerald-50 mb-1">Activities:</div>
             <ul className="space-y-1">
               {((goal.activities || []) as string[]).map((a, i) => (
-                <li key={i} className="text-[11px] text-emerald-50 leading-relaxed">• {a}</li>
+                <li key={i} className="text-sm text-emerald-50 leading-relaxed">• {a}</li>
               ))}
             </ul>
           </div>
-          <div className="text-[11px] text-emerald-100">⏱ Around {goal.timeline_weeks as number} weeks · {goal.evidence_base as string}</div>
+          <div className="text-sm text-emerald-100">⏱ Around {goal.timeline_weeks as number} weeks · {goal.evidence_base as string}</div>
         </div>
       )}
 
       <div className="mt-3 flex items-center gap-2">
         <button onClick={() => resolve('approve')} disabled={!!resolving}
-          className="flex-1 text-xs font-bold px-3 py-2 rounded-full bg-white text-emerald-700 hover:bg-emerald-50 transition disabled:opacity-60">
+          className="flex-1 text-sm font-bold px-3 py-3 rounded-full bg-white text-emerald-700 hover:bg-emerald-50 transition disabled:opacity-60 min-h-[48px]">
           {resolving === 'approve' ? 'Adding…' : '✓ Add this goal'}
         </button>
         <button onClick={() => setExpanded(e => !e)}
-          className="text-xs font-bold px-3 py-2 rounded-full bg-white/15 hover:bg-white/25 transition">
+          className="text-sm font-bold px-4 py-3 rounded-full bg-white/15 hover:bg-white/25 transition min-h-[48px]">
           {expanded ? 'Less ↑' : 'Details ↓'}
         </button>
         <button onClick={() => resolve('dismiss')} disabled={!!resolving}
-          className="text-xs font-semibold px-3 py-2 rounded-full text-emerald-100 hover:text-white transition disabled:opacity-60">
+          className="text-sm font-semibold px-3 py-3 rounded-full text-emerald-100 hover:text-white transition disabled:opacity-60 min-h-[48px]">
           {resolving === 'dismiss' ? '…' : 'Not now'}
         </button>
       </div>
@@ -110,71 +113,15 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, filte
   const childName = child.name as string
 
   const [selectedGoal, setSelectedGoal] = useState<Record<string, unknown> | null>(null)
-  const [logNote, setLogNote] = useState('')
-  const [logRating, setLogRating] = useState(3)
-  const [logging, setLogging] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
-  const [coaching, setCoaching] = useState<{
-    loading: boolean
-    logId: string
-    data: { empathy: string; follow_up_question: string; technique_adjustment: string; pattern_insight: string } | null
-  } | null>(null)
-  const [coachAnswer, setCoachAnswer] = useState('')
-  const [sendingAnswer, setSendingAnswer] = useState(false)
+  // logger: null = closed; { goalId } = open (goalId null = free pick)
+  const [logger, setLogger] = useState<{ goalId: string | null } | null>(null)
 
   const areas = Array.from(new Set(goals.map(g => g.area as string)))
   const filteredGoals = filterArea ? goals.filter(g => g.area === filterArea) : goals
-
-  const logSession = async (goalId: string) => {
-    setLogging(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const goal = goals.find(g => g.id === goalId)
-    const { data: savedLog } = await supabase.from('session_logs').insert({
-      child_id: childId, user_id: user.id, goal_id: goalId,
-      activity_title: goal?.label as string || 'Practice session',
-      area: goal?.area as string || null,
-      rating: logRating,
-      notes: logNote || null,
-      logged_at: new Date().toISOString(),
-    }).select('id').single()
-    const savedRating = logRating
-    const savedNote = logNote
-    setLogging(false)
-    setLogNote('')
-    setSelectedGoal(null)
-    router.refresh()
-
-    // Parent Coaching Loop (§5.4): a hard session gets a warm, specific response
-    // in the moment — not just a saved row.
-    if (savedRating <= 2 && savedLog) {
-      setCoaching({ loading: true, logId: savedLog.id as string, data: null })
-      try {
-        const res = await fetch('/api/coaching', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ childId, goalId, rating: savedRating, notes: savedNote }),
-        })
-        const { coaching: data } = await res.json()
-        if (data) setCoaching({ loading: false, logId: savedLog.id as string, data })
-        else setCoaching(null)
-      } catch {
-        setCoaching(null)
-      }
-    }
-  }
-
-  const sendCoachAnswer = async () => {
-    if (!coaching?.data || !coachAnswer.trim()) return
-    setSendingAnswer(true)
-    // Append Q&A to the log's notes — the check-in and weekly-planning agents read these
-    const { data: log } = await supabase.from('session_logs').select('notes').eq('id', coaching.logId).single()
-    const appended = `${log?.notes || ''}\n\n[Dr. Eriksson asked] ${coaching.data.follow_up_question}\n[Parent] ${coachAnswer.trim()}`.trim()
-    await supabase.from('session_logs').update({ notes: appended }).eq('id', coaching.logId)
-    setSendingAnswer(false)
-    setCoachAnswer('')
-    setCoaching(null)
-  }
+  const loggableGoals = goals
+    .filter(g => g.status !== 'achieved' && g.status !== 'paused')
+    .map(g => ({ id: g.id as string, label: g.label as string }))
 
   const updateStatus = async (goalId: string, status: string) => {
     setUpdatingStatus(goalId)
@@ -196,71 +143,29 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, filte
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* In-the-moment coaching after a hard session (§5.4) */}
-      {coaching && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md p-5 shadow-2xl">
-            {coaching.loading ? (
-              <div className="text-center py-8">
-                <div className="text-4xl animate-pulse mb-3">💛</div>
-                <div className="text-sm text-gray-500">Dr. Eriksson is thinking about this one…</div>
-              </div>
-            ) : coaching.data && (
-              <>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center">👩‍⚕️</div>
-                  <div className="text-xs font-bold text-gray-900">Dr. Eriksson</div>
-                </div>
-                <p className="text-sm text-gray-700 leading-relaxed">{coaching.data.empathy}</p>
-                {coaching.data.pattern_insight && (
-                  <div className="mt-3 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
-                    <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wide mb-0.5">Something I&apos;ve noticed</div>
-                    <p className="text-xs text-amber-800 leading-relaxed">{coaching.data.pattern_insight}</p>
-                  </div>
-                )}
-                <div className="mt-3 bg-violet-50 rounded-xl px-3 py-2.5">
-                  <div className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-0.5">Try this next time</div>
-                  <p className="text-xs text-violet-900 leading-relaxed">{coaching.data.technique_adjustment}</p>
-                </div>
-                <div className="mt-4">
-                  <p className="text-sm font-semibold text-gray-900 leading-relaxed">{coaching.data.follow_up_question}</p>
-                  <textarea value={coachAnswer} onChange={e => setCoachAnswer(e.target.value)}
-                    placeholder="One sentence is plenty…" rows={2}
-                    className="mt-2 w-full px-3 py-2 rounded-xl border border-gray-200 text-xs resize-none focus:outline-none focus:border-violet-400 transition" />
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <button onClick={sendCoachAnswer} disabled={sendingAnswer || !coachAnswer.trim()}
-                    className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition">
-                    {sendingAnswer ? 'Sending…' : 'Send to Dr. Eriksson'}
-                  </button>
-                  <button onClick={() => { setCoaching(null); setCoachAnswer('') }}
-                    className="px-4 py-2.5 text-xs font-semibold text-gray-400 hover:text-gray-600 transition">
-                    Skip
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+      {logger && (
+        <PracticeLogger
+          childId={childId}
+          goals={loggableGoals}
+          initialGoalId={logger.goalId}
+          onClose={() => { setLogger(null); router.refresh() }}
+        />
       )}
 
       <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="text-gray-400 hover:text-gray-600 text-lg">←</Link>
-            <div>
-              <div className="font-black text-sm text-gray-900">Goals</div>
-              <div className="text-[10px] text-gray-400">{childName}&apos;s intervention plan</div>
-            </div>
+          <div>
+            <div className="font-black text-sm text-gray-900">Goals</div>
+            <div className="text-xs text-gray-400">{childName}&apos;s plan · Dr. Santos — your planner</div>
           </div>
-          <div className="text-xs font-bold text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full">
+          <div className="text-sm font-bold text-violet-600 bg-violet-50 px-3 py-1.5 rounded-full">
             {goals.filter(g => g.status === 'achieved').length}/{goals.length} achieved
           </div>
         </div>
         {/* Area filter tabs */}
         <div className="max-w-2xl mx-auto px-4 pb-2 flex gap-1 overflow-x-auto">
           <Link href={`/goals?child=${childId}`}
-            className={`text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition ${!filterArea ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+            className={`text-sm font-semibold px-3.5 py-2 rounded-full whitespace-nowrap transition ${!filterArea ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
             All ({goals.length})
           </Link>
           {areas.map(area => {
@@ -268,7 +173,7 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, filte
             const count = goals.filter(g => g.area === area).length
             return (
               <Link key={area} href={`/goals?child=${childId}&area=${area}`}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition flex items-center gap-1 ${filterArea === area ? 'text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                className={`text-sm font-semibold px-3.5 py-2 rounded-full whitespace-nowrap transition flex items-center gap-1 ${filterArea === area ? 'text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
                 style={filterArea === area ? { background: cfg.color } : {}}>
                 {cfg.icon} {area} ({count})
               </Link>
@@ -277,7 +182,7 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, filte
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-4 space-y-3 pb-12">
+      <div className="max-w-2xl mx-auto px-4 py-4 space-y-3 pb-32">
         {/* Pending next-goal proposals (Goal Progression Engine) */}
         {proposals.map(p => {
           const sourceGoal = goals.find(g => g.id === p.source_goal_id)
@@ -295,7 +200,7 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, filte
             <div className="font-bold text-gray-900 mb-1">No goals yet</div>
             <div className="text-sm text-gray-400">Complete the plan step to generate goals.</div>
             <Link href={`/onboarding/plan?child=${childId}`}
-              className="mt-4 inline-block text-xs font-bold text-violet-600 hover:underline">
+              className="mt-4 inline-block text-sm font-bold text-violet-600 hover:underline">
               Go to plan →
             </Link>
           </div>
@@ -315,20 +220,17 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, filte
               {/* Goal header */}
               <button className="w-full px-4 py-4 text-left flex items-start gap-3"
                 onClick={() => setSelectedGoal(isExpanded ? null : goal)}>
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0 mt-0.5"
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 mt-0.5"
                   style={{ background: cfg.bg }}>
                   {cfg.icon}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-sm text-gray-900 leading-snug">{goal.label as string}</div>
                   <div className="flex items-center gap-2 mt-1.5">
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: scfg.dot }} />
-                    <span className="text-xs font-medium" style={{ color: scfg.color }}>{scfg.label}</span>
-                    {!!goal.timeline_weeks && (
-                      <span className="text-xs text-gray-400">· {goal.timeline_weeks as number}w</span>
-                    )}
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: scfg.dot }} />
+                    <span className="text-sm font-medium" style={{ color: scfg.color }}>{scfg.label}</span>
                     {recentLogCount > 0 && (
-                      <span className="text-xs text-emerald-600 font-medium">· {recentLogCount}x this month</span>
+                      <span className="text-sm text-emerald-600 font-medium">· {recentLogCount}x this month</span>
                     )}
                   </div>
                 </div>
@@ -337,37 +239,40 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, filte
 
               {isExpanded && (
                 <div className="px-4 pb-4 border-t border-gray-50 pt-3 space-y-4">
-                  {/* Rationale */}
                   {!!goal.rationale && (
                     <div>
-                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Why this goal</div>
-                      <div className="text-xs text-gray-600 leading-relaxed">{goal.rationale as string}</div>
+                      <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Why this goal</div>
+                      <div className="text-sm text-gray-600 leading-relaxed">{goal.rationale as string}</div>
                     </div>
                   )}
-                  {/* Approach */}
                   {!!goal.approach && (
                     <div>
-                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Approach</div>
-                      <div className="text-xs text-gray-600 leading-relaxed">{goal.approach as string}</div>
+                      <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Approach</div>
+                      <div className="text-sm text-gray-600 leading-relaxed">{goal.approach as string}</div>
                     </div>
                   )}
-                  {/* Target */}
                   {!!goal.target_criterion && (
                     <div>
-                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Success looks like</div>
-                      <div className="text-xs text-gray-600 leading-relaxed">{goal.target_criterion as string}</div>
+                      <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Success looks like</div>
+                      <div className="text-sm text-gray-600 leading-relaxed">{goal.target_criterion as string}</div>
                     </div>
                   )}
 
+                  {/* Primary action first: log */}
+                  <button onClick={() => setLogger({ goalId: goal.id as string })}
+                    className="w-full py-3.5 bg-violet-600 hover:bg-violet-700 text-white font-black rounded-2xl text-sm transition min-h-[48px]">
+                    + Log practice on this goal
+                  </button>
+
                   {/* Status update */}
                   <div>
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Update status</div>
+                    <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Update status</div>
                     <div className="flex flex-wrap gap-1.5">
                       {Object.entries(STATUS_CONFIG).map(([s, sc]) => (
                         <button key={s}
                           disabled={updatingStatus === goal.id || status === s}
                           onClick={() => updateStatus(goal.id as string, s)}
-                          className="text-xs font-semibold px-3 py-1.5 rounded-full border transition disabled:opacity-40"
+                          className="text-sm font-semibold px-3.5 py-2.5 rounded-full border transition disabled:opacity-40 min-h-[44px]"
                           style={status === s
                             ? { background: sc.dot, color: '#fff', borderColor: sc.dot }
                             : { background: '#fff', color: '#6B7280', borderColor: '#E5E7EB' }}>
@@ -376,38 +281,20 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, filte
                       ))}
                     </div>
                   </div>
-
-                  {/* Log session */}
-                  <div className="bg-gray-50 rounded-xl p-3 space-y-2">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Log a session</div>
-                    <div>
-                      <div className="text-xs text-gray-500 mb-1.5">How did it go? (1 = struggled, 5 = nailed it)</div>
-                      <div className="flex gap-2">
-                        {[1,2,3,4,5].map(r => (
-                          <button key={r} onClick={() => setLogRating(r)}
-                            className="w-8 h-8 rounded-full text-sm font-bold transition"
-                            style={logRating === r
-                              ? { background: cfg.color, color: '#fff' }
-                              : { background: '#E5E7EB', color: '#6B7280' }}>
-                            {r}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <textarea value={logNote} onChange={e => setLogNote(e.target.value)}
-                      placeholder="Optional note — what happened?" rows={2}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs resize-none focus:outline-none focus:border-violet-400 transition" />
-                    <button onClick={() => logSession(goal.id as string)} disabled={logging}
-                      className="w-full py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white font-bold rounded-xl text-xs transition">
-                      {logging ? 'Saving…' : '+ Log session'}
-                    </button>
-                  </div>
                 </div>
               )}
             </div>
           )
         })}
       </div>
+
+      {/* Floating quick-log (UX_PLAN.md P3): two taps to a rating from anywhere */}
+      <button onClick={() => setLogger({ goalId: null })}
+        className="fixed bottom-20 right-4 z-30 px-5 py-3.5 bg-violet-600 hover:bg-violet-700 text-white font-black rounded-full text-sm shadow-lg shadow-violet-300 transition min-h-[48px]">
+        + Log practice
+      </button>
+
+      <TabBar childId={childId} />
     </div>
   )
 }

@@ -49,15 +49,15 @@ export default async function DashboardPage() {
     { data: todayLogs },
     { data: recentLogs },
     { data: recentCheckin },
-    { data: currentPlan },
     { data: weeklyFocus },
+    { count: pendingProposals },
   ] = await Promise.all([
-    supabase.from('goals').select('*').eq('child_id', child.id).neq('status', 'achieved'),
+    supabase.from('goals').select('*').eq('child_id', child.id),
     supabase.from('session_logs').select('*').eq('child_id', child.id).gte('logged_at', today.toISOString()),
     supabase.from('session_logs').select('logged_at').eq('child_id', child.id).gte('logged_at', new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString()),
     supabase.from('weekly_checkins').select('*').eq('child_id', child.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-    supabase.from('plans').select('*').eq('child_id', child.id).eq('is_current', true).maybeSingle(),
     supabase.from('weekly_focus').select('*').eq('child_id', child.id).order('week_start', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('goal_proposals').select('id', { count: 'exact', head: true }).eq('child_id', child.id).eq('status', 'pending'),
   ])
 
   // Streak
@@ -74,8 +74,8 @@ export default async function DashboardPage() {
       todayLogs={todayLogs || []}
       streak={streak}
       recentCheckin={recentCheckin}
-      currentPlan={currentPlan}
       weeklyFocus={weeklyFocus}
+      pendingProposals={pendingProposals || 0}
     />
   )
 }

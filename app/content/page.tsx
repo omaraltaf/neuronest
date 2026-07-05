@@ -4,6 +4,7 @@ import { StoryImageClientSide } from './ImageGenerator'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import TabBar from '@/components/TabBar'
 
 const CONTENT_TYPES = [
   { id: 'social_story',   icon: '📖', label: 'Social Story',     desc: 'Personalised story with emoji sentences' },
@@ -652,8 +653,8 @@ function GenerateModal({ goals, child, onGenerate, onClose, generating }: {
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center px-0 sm:px-4">
       <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <div className="font-black text-gray-900">Generate for {child.name as string}</div>
-          <button onClick={onClose} className="text-gray-400 text-xl">✕</button>
+          <div className="font-black text-gray-900">Make something for {child.name as string}</div>
+          <button onClick={onClose} aria-label="Close" className="w-11 h-11 -mr-2 flex items-center justify-center text-gray-400 text-xl">✕</button>
         </div>
 
         <div className="space-y-4">
@@ -688,7 +689,7 @@ function GenerateModal({ goals, child, onGenerate, onClose, generating }: {
           <button onClick={() => onGenerate(selectedGoal, selectedType)}
             disabled={generating || !selectedGoal}
             className="w-full py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white font-black rounded-xl text-sm transition">
-            {generating ? 'Emma is creating…' : 'Generate →'}
+            {generating ? 'Emma is creating…' : 'Make it →'}
           </button>
         </div>
       </div>
@@ -856,16 +857,13 @@ function ContentContent() {
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/dashboard" className="text-gray-400 hover:text-gray-600 text-lg">←</Link>
-              <div>
-                <div className="font-black text-sm text-gray-900">Content Library</div>
-                <div className="text-[10px] text-gray-400">Emma Blackwell · SEN Teacher</div>
-              </div>
+            <div>
+              <div className="font-black text-sm text-gray-900">Materials</div>
+              <div className="text-xs text-gray-400">Emma — makes your materials</div>
             </div>
             <button onClick={() => setShowGenerate(true)}
-              className="text-xs font-black px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl">
-              + Generate
+              className="text-sm font-black px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl min-h-[44px]">
+              + Make something
             </button>
           </div>
           <div className="max-w-2xl mx-auto px-4 pb-2 flex gap-1 overflow-x-auto">
@@ -887,7 +885,7 @@ function ContentContent() {
           </div>
         </header>
 
-        <div className="max-w-2xl mx-auto px-4 py-4 space-y-3 pb-12">
+        <div className="max-w-2xl mx-auto px-4 py-4 space-y-3 pb-28">
           {generating && (
             <div className="bg-violet-50 border border-violet-100 rounded-2xl p-4 flex items-center gap-3">
               <div className="flex gap-1"><div className="typing-dot"/><div className="typing-dot"/><div className="typing-dot"/></div>
@@ -931,6 +929,8 @@ function ContentContent() {
             )
           })}
         </div>
+
+        <TabBar childId={childId} />
       </div>
 
       {showGenerate && child && (

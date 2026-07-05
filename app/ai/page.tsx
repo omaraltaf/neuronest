@@ -1,8 +1,8 @@
 'use client'
 import { useState, useRef, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import TabBar from '@/components/TabBar'
 import type { ChatMessage } from '@/types'
 
 const SYSTEM_PROMPT = `You are the NeuroNest AI assistant — a warm, knowledgeable companion for parents of children with ASD. You have access to this child's full profile, plan, and goals.
@@ -97,11 +97,10 @@ function AIChatContent() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-100 flex-shrink-0">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link href="/dashboard" className="text-gray-400 hover:text-gray-600 text-lg">←</Link>
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">💬</div>
           <div>
-            <div className="font-black text-sm text-gray-900">Ask AI</div>
-            <div className="text-[10px] text-gray-400">Questions about {childName || 'your child'}&apos;s programme</div>
+            <div className="font-black text-sm text-gray-900">Ask</div>
+            <div className="text-xs text-gray-400">Any question about {childName || 'your child'}&apos;s programme</div>
           </div>
         </div>
       </header>
@@ -143,18 +142,20 @@ function AIChatContent() {
         </div>
       )}
 
-      <div className="bg-white border-t border-gray-100 flex-shrink-0">
+      <div className="bg-white border-t border-gray-100 flex-shrink-0 mb-[60px]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex gap-2">
           <textarea value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
             placeholder="Ask anything about the programme…" rows={2}
             className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition" />
           <button onClick={send} disabled={loading || !input.trim()}
-            className="px-4 self-end py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-bold rounded-xl text-sm transition">
+            className="px-4 self-end py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-bold rounded-xl text-sm transition min-h-[44px]">
             Send
           </button>
         </div>
       </div>
+
+      <TabBar childId={childId} />
     </div>
   )
 }
