@@ -110,9 +110,13 @@ async function processCards(contentId: string, childId: string, cards: Record<st
 // AAC symbol conventions (Widgit/Boardmaker/PCS): ONE concept, flat colour, bold outline,
 // white background, no text. Same safety reality as stories (CLAUDE.md §6): never depict
 // a specific child — symbols show generic simple figures or objects only.
+// IMPORTANT: keep this prompt as natural scene-first language. Attribute-list phrasing
+// ("One concept only, centred, flat solid colours, ...") made Imagen occasionally render
+// a garbled DESIGN SPEC SHEET instead of the symbol — discovered 2026-07-05 on the
+// "my turn" card. Describe the picture, don't enumerate requirements.
 function buildAacPrompt(card: Record<string, string>): string {
-  const scene = card.symbol_description || `a simple clear depiction of the concept "${card.word}"`
-  return `Single AAC communication symbol in the style of Widgit and Boardmaker picture communication symbols: ${scene}. One concept only, centred, flat solid colours, thick bold black outline, plain white background, extremely simple and clear, no text or letters, no visual clutter, suitable as a communication card symbol for a young child`
+  const scene = card.symbol_description || `${card.word}`
+  return `A very simple flat cartoon pictogram for a children's picture communication card, showing ${scene}. The drawing has thick black outlines and solid bright colours on a pure white background, drawn in the plain minimal style of Widgit and Boardmaker pictograms. The image contains only this one centred drawing and nothing else — no words, no labels, no borders.`
 }
 
 async function tryImagen(prompt: string, key: string): Promise<string | null> {
