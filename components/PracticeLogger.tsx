@@ -75,8 +75,11 @@ export default function PracticeLogger({ childId, goals, initialGoalId, activity
   }
 
   return (
+    // text-gray-900 on the sheet resets colour inheritance — this component mounts
+    // inside contexts like the text-white gradient focus card, which otherwise turns
+    // the select/textarea text white-on-white (bug found in field use 2026-07-06)
     <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-md p-5 shadow-2xl">
+      <div className="bg-white text-gray-900 rounded-3xl w-full max-w-md p-5 shadow-2xl">
 
         {phase === 'log' && (
           <>
@@ -90,7 +93,7 @@ export default function PracticeLogger({ childId, goals, initialGoalId, activity
               <div className="mb-4">
                 <label className="block text-sm font-bold text-gray-600 mb-1.5">What did you work on?</label>
                 <select value={goalId} onChange={e => setGoalId(e.target.value)}
-                  className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-violet-400">
+                  className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400">
                   {goals.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
                   <option value="">Just general practice</option>
                 </select>
