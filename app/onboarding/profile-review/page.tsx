@@ -199,7 +199,7 @@ function SectionChat({
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-bold text-sm text-gray-900">Dr. Sarah Chen</div>
-            <div className="text-[10px] text-gray-400 truncate">
+            <div className="text-xs text-gray-400 truncate">
               Discussing: {section.icon} {section.title}
             </div>
           </div>
@@ -728,7 +728,7 @@ function ProfileContent() {
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">👩‍⚕️</div>
               <div>
                 <div className="text-sm font-bold text-gray-900">Dr. Sarah Chen</div>
-                <div className="text-[10px] text-gray-400">Follow-up questions from your documents</div>
+                <div className="text-xs text-gray-400">Follow-up questions from your documents</div>
               </div>
             </div>
             <div className="px-4 py-4 space-y-3 max-h-96 overflow-y-auto">

@@ -2,12 +2,12 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import DashboardClient from './DashboardClient'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: { child?: string } }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Get child
+  // Get children (query is user-scoped, so ?child= can only select the user's own)
   const { data: children } = await supabase.from('children')
     .select('*').eq('user_id', user.id).order('created_at', { ascending: true })
 
@@ -16,7 +16,7 @@ export default async function DashboardPage() {
     redirect('/onboarding/child-setup')
   }
 
-  const child = children[0]
+  const child = children.find(c => c.id === searchParams.child) || children[0]
 
   // Get app state
   const { data: appState } = await supabase.from('app_state')
@@ -76,6 +76,7 @@ export default async function DashboardPage() {
       recentCheckin={recentCheckin}
       weeklyFocus={weeklyFocus}
       pendingProposals={pendingProposals || 0}
+      allChildren={children.map(c => ({ id: c.id as string, name: c.name as string }))}
     />
   )
 }

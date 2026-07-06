@@ -22,7 +22,8 @@ export default function TabBar({ childId }: { childId: string }) {
       <div className="max-w-2xl mx-auto flex">
         {TABS.map(tab => {
           const active = pathname === tab.href
-          const href = tab.href === '/dashboard' ? tab.href : `${tab.href}?child=${childId}`
+          // Every tab carries the child id so multi-child selection survives navigation
+          const href = `${tab.href}?child=${childId}`
           return (
             <Link key={tab.href} href={href}
               className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[52px]"

@@ -199,7 +199,7 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
   )
 }
 
-export default function DashboardClient({ child, appState, goals, todayLogs, streak, recentCheckin, weeklyFocus, pendingProposals }: {
+export default function DashboardClient({ child, appState, goals, todayLogs, streak, recentCheckin, weeklyFocus, pendingProposals, allChildren }: {
   child: Record<string, unknown>
   appState: Record<string, unknown>
   goals: Record<string, unknown>[]
@@ -208,6 +208,7 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
   recentCheckin: Record<string, unknown> | null
   weeklyFocus: Record<string, unknown> | null
   pendingProposals: number
+  allChildren: { id: string; name: string }[]
 }) {
   const router = useRouter()
   const supabase = createClient()
@@ -278,7 +279,22 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-base">🧠</div>
             <div>
               <div className="font-black text-sm text-gray-900">NeuroNest</div>
-              <div className="text-xs text-gray-400">{childName}&apos;s platform</div>
+              {allChildren.length > 1 ? (
+                <select value={childId}
+                  onChange={e => {
+                    if (e.target.value === '__add__') router.push('/onboarding/child-setup')
+                    else router.push(`/dashboard?child=${e.target.value}`)
+                  }}
+                  className="text-xs text-gray-500 bg-transparent -ml-1 py-1 focus:outline-none"
+                  aria-label="Switch child">
+                  {allChildren.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}&apos;s platform</option>
+                  ))}
+                  <option value="__add__">＋ Add a child…</option>
+                </select>
+              ) : (
+                <div className="text-xs text-gray-400">{childName}&apos;s platform</div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">

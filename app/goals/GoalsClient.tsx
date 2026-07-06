@@ -25,28 +25,90 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string 
   paused:      { label: 'Paused',      color: '#9CA3AF', dot: '#9CA3AF' },
 }
 
-function GoalProposalCard({ proposal, sourceGoalLabel, onResolved }: {
+function GoalProposalCard({ proposal, sourceGoalLabel, child, onResolved }: {
   proposal: Record<string, unknown>
   sourceGoalLabel: string
+  child: Record<string, unknown>
   onResolved: () => void
 }) {
+  const supabase = createClient()
   const [expanded, setExpanded] = useState(false)
   const [resolving, setResolving] = useState<string | null>(null)
+  const [packPhase, setPackPhase] = useState<'making' | 'done' | null>(null)
   const data = proposal.proposal as Record<string, unknown>
   const goal = data.next_goal as Record<string, unknown>
 
   const resolve = async (action: 'approve' | 'dismiss') => {
     setResolving(action)
     try {
-      await fetch('/api/goal-proposals', {
+      const res = await fetch('/api/goal-proposals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ proposalId: proposal.id, action }),
       })
-      onResolved()
+      const result = await res.json()
+
+      // §5.2 (optional part, now built): a freshly approved goal starts with material
+      // in hand — Emma generates its first activity pack right away. If the parent
+      // navigates off mid-generation, the content_gap nudge is the backstop.
+      if (action === 'approve' && result.goalId) {
+        setPackPhase('making')
+        try {
+          const genRes = await fetch('/api/content', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              goal: { ...goal, id: result.goalId },
+              child,
+              contentType: 'activity_pack',
+              language: (child.language as string) || 'en',
+              action: 'generate',
+            }),
+          })
+          const { content } = await genRes.json()
+          if (content && !content.raw) {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+              await supabase.from('generated_content').insert({
+                child_id: child.id as string, user_id: user.id,
+                goal_id: result.goalId, content_type: 'activity_pack',
+                title: content.title || `Starter pack — ${goal.label as string}`,
+                content_data: content,
+                language: (child.language as string) || 'en',
+              })
+            }
+          }
+        } catch (err) {
+          console.error('starter pack generation failed:', err)
+        }
+        setPackPhase('done')
+        setTimeout(onResolved, 2500) // let the confirmation be read before the list refreshes
+      } else {
+        onResolved()
+      }
     } finally {
       setResolving(null)
     }
+  }
+
+  if (packPhase) {
+    return (
+      <div className="bg-gradient-to-br from-emerald-600 to-teal-600 text-white rounded-2xl px-4 py-5 shadow-md shadow-emerald-200 text-center">
+        {packPhase === 'making' ? (
+          <>
+            <div className="text-3xl mb-2 animate-pulse">🎯</div>
+            <div className="font-black text-base">Goal added!</div>
+            <div className="text-sm text-emerald-100 mt-1">Emma is making a starter activity pack so you can begin tonight…</div>
+          </>
+        ) : (
+          <>
+            <div className="text-3xl mb-2">🎉</div>
+            <div className="font-black text-base">All set</div>
+            <div className="text-sm text-emerald-100 mt-1">The goal is in your plan and its starter pack is waiting in Materials.</div>
+          </>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -190,6 +252,7 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, filte
             <GoalProposalCard key={p.id as string}
               proposal={p}
               sourceGoalLabel={(sourceGoal?.label as string) || 'Goal'}
+              child={child}
               onResolved={() => router.refresh()} />
           )
         })}

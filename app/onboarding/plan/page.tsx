@@ -347,7 +347,7 @@ Open by acknowledging what you already know about their main concerns, then pres
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">👩‍💼</div>
           <div>
             <div className="text-sm font-bold text-gray-900">Dr. Maria Santos</div>
-            <div className="text-[10px] text-gray-400">BCBA-D · ABA Intervention Specialist</div>
+            <div className="text-xs text-gray-400">Builds the goal plan · BCBA-D</div>
           </div>
         </div>
 

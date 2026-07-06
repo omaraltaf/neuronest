@@ -57,7 +57,7 @@ function StepsBar() {
                   {done ? '✓' : step.num}
                 </div>
               )}
-              <span className={`text-[9px] mt-1 font-medium whitespace-nowrap ${active ? 'text-violet-600' : 'text-gray-400'}`}>
+              <span className={`text-[11px] mt-1 font-medium whitespace-nowrap ${active ? 'text-violet-600' : 'text-gray-400'}`}>
                 {step.label}
               </span>
             </div>

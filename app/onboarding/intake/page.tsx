@@ -45,8 +45,8 @@ function ConfidencePanel({ confidence }: { confidence: DomainConfidence }) {
           return (
             <div key={domain}>
               <div className="flex justify-between items-center mb-0.5">
-                <span className="text-[10px] text-gray-500 font-medium">{DOMAIN_LABELS[domain]}</span>
-                <span className="text-[10px] font-bold" style={{ color: pct >= 80 ? '#16A34A' : '#9CA3AF' }}>
+                <span className="text-xs text-gray-500 font-medium">{DOMAIN_LABELS[domain]}</span>
+                <span className="text-xs font-bold" style={{ color: pct >= 80 ? '#16A34A' : '#9CA3AF' }}>
                   {pct >= 80 ? '✓' : `${pct}%`}
                 </span>
               </div>
@@ -57,7 +57,7 @@ function ConfidencePanel({ confidence }: { confidence: DomainConfidence }) {
           )
         })}
       </div>
-      <div className="mt-3 text-[10px] text-gray-400 leading-relaxed">
+      <div className="mt-3 text-xs text-gray-400 leading-relaxed">
         The interview continues until all areas reach 80%+. This ensures your child&apos;s plan is truly personalised.
       </div>
     </div>
@@ -275,7 +275,7 @@ function IntakeContent() {
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm flex-shrink-0">👩‍⚕️</div>
             <div>
               <div className="text-sm font-bold text-gray-900">Dr. Sarah Chen</div>
-              <div className="text-[10px] text-gray-400">Clinical Psychologist · ASD Assessment Specialist</div>
+              <div className="text-xs text-gray-400">Gets to know your child · Clinical Psychologist</div>
             </div>
             <div className="ml-auto text-xs font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full">
               {overallConfidence}% understood
