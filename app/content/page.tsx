@@ -705,6 +705,7 @@ function ContentContent() {
   const [child, setChild] = useState<Record<string, unknown> | null>(null)
   const [goals, setGoals] = useState<Record<string, unknown>[]>([])
   const [contentItems, setContentItems] = useState<Record<string, unknown>[]>([])
+  const [focusGoalIds, setFocusGoalIds] = useState<string[]>([])
   const [showGenerate, setShowGenerate] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [revising, setRevising] = useState(false)
@@ -715,16 +716,19 @@ function ContentContent() {
   useEffect(() => {
     if (!childId) return
     const load = async () => {
-      const [{ data: c }, { data: g }, { data: content }] = await Promise.all([
+      const [{ data: c }, { data: g }, { data: content }, { data: focus }] = await Promise.all([
         supabase.from('children').select('*').eq('id', childId).single(),
         supabase.from('goals').select('*').eq('child_id', childId).neq('status', 'achieved'),
         supabase.from('generated_content').select('*').eq('child_id', childId)
           .neq('content_type', 'child_zone_cards') // internal Child Zone cache, not library content
           .order('generated_at', { ascending: false }),
+        supabase.from('weekly_focus').select('focus_data').eq('child_id', childId)
+          .order('week_start', { ascending: false }).limit(1).maybeSingle(),
       ])
       if (c) setChild(c)
       setGoals(g || [])
       setContentItems(content || [])
+      setFocusGoalIds(((focus?.focus_data as { primary_goal_ids?: string[] })?.primary_goal_ids) || [])
     }
     load()
   }, [childId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -892,6 +896,47 @@ function ContentContent() {
               <div className="text-sm text-violet-700 font-medium">Emma is creating visual content for {child?.name as string}…</div>
             </div>
           )}
+
+          {/* Recommended for this week — no blank canvas (field feedback 2026-07-06):
+              one-tap suggestions tied to the goals being worked on right now */}
+          {!generating && !filterType && (() => {
+            const workingGoals = goals.filter(g => ['in_progress', 'emerging'].includes(g.status as string))
+            const ordered = [
+              ...workingGoals.filter(g => focusGoalIds.includes(g.id as string)),
+              ...workingGoals.filter(g => !focusGoalIds.includes(g.id as string)),
+            ]
+            const hasType = (goalId: string, type: string) =>
+              contentItems.some(c => c.goal_id === goalId && c.content_type === type)
+            const recs: { goal: Record<string, unknown>; type: string; icon: string; label: string }[] = []
+            for (const g of ordered) {
+              if (recs.length >= 3) break
+              if (!hasType(g.id as string, 'activity_pack'))
+                recs.push({ goal: g, type: 'activity_pack', icon: '🎯', label: 'Activity pack' })
+              if (recs.length >= 3) break
+              if (!hasType(g.id as string, 'flashcard_set'))
+                recs.push({ goal: g, type: 'flashcard_set', icon: '🃏', label: 'Flashcards' })
+            }
+            if (recs.length === 0) return null
+            return (
+              <div className="bg-white rounded-2xl border border-violet-100 p-4 shadow-sm">
+                <div className="text-sm font-black text-gray-900">Recommended for this week</div>
+                <div className="text-xs text-gray-400 mb-3">Emma — makes your materials — suggests these for the goals you&apos;re working on</div>
+                <div className="space-y-2">
+                  {recs.map((r, i) => (
+                    <button key={i} onClick={() => handleGenerate(r.goal.id as string, r.type)}
+                      className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl bg-violet-50 hover:bg-violet-100 border border-violet-100 text-left transition min-h-[52px]">
+                      <span className="text-xl">{r.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold text-violet-900">{r.label}</div>
+                        <div className="text-xs text-violet-500 truncate">for &ldquo;{r.goal.label as string}&rdquo;</div>
+                      </div>
+                      <span className="text-xs font-black text-violet-600 bg-white px-3 py-2 rounded-full flex-shrink-0">Make it →</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
 
           {filtered.length === 0 && !generating && (
             <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">

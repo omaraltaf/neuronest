@@ -77,6 +77,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
       weeklyFocus={weeklyFocus}
       pendingProposals={pendingProposals || 0}
       allChildren={children.map(c => ({ id: c.id as string, name: c.name as string }))}
+      totalRecentLogs={(recentLogs || []).length}
     />
   )
 }

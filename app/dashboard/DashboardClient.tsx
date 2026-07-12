@@ -199,7 +199,7 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
   )
 }
 
-export default function DashboardClient({ child, appState, goals, todayLogs, streak, recentCheckin, weeklyFocus, pendingProposals, allChildren }: {
+export default function DashboardClient({ child, appState, goals, todayLogs, streak, recentCheckin, weeklyFocus, pendingProposals, allChildren, totalRecentLogs }: {
   child: Record<string, unknown>
   appState: Record<string, unknown>
   goals: Record<string, unknown>[]
@@ -209,6 +209,7 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
   weeklyFocus: Record<string, unknown> | null
   pendingProposals: number
   allChildren: { id: string; name: string }[]
+  totalRecentLogs: number
 }) {
   const router = useRouter()
   const supabase = createClient()
@@ -346,6 +347,29 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
           <h1 className="text-2xl font-black text-gray-900">Hello! 👋</h1>
           <p className="text-sm text-gray-400 mt-0.5">{date}</p>
         </div>
+
+        {/* Handhold for new families (field feedback 2026-07-06: "where do I start?").
+            Disappears on its own once logging practice becomes a habit. */}
+        {totalRecentLogs < 3 && appState?.current_phase === 'active' && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <div className="text-sm font-black text-gray-900 mb-2.5">How this works — just 3 steps a day</div>
+            <div className="space-y-2">
+              <div className="flex gap-2.5 text-sm text-gray-600 leading-relaxed">
+                <span className="font-black text-violet-500 flex-shrink-0">1</span>
+                <span>Read <span className="font-semibold text-gray-800">this week&apos;s focus</span> in the purple card below — Dr. Santos picks the ONE thing that matters most right now</span>
+              </div>
+              <div className="flex gap-2.5 text-sm text-gray-600 leading-relaxed">
+                <span className="font-black text-violet-500 flex-shrink-0">2</span>
+                <span>Do <span className="font-semibold text-gray-800">today&apos;s 5 minutes</span> with {childName} — the activity is inside the card, step by step</span>
+              </div>
+              <div className="flex gap-2.5 text-sm text-gray-600 leading-relaxed">
+                <span className="font-black text-violet-500 flex-shrink-0">3</span>
+                <span>Tap <span className="font-semibold text-gray-800">&ldquo;We did it — log it&rdquo;</span> and say how it went — that&apos;s how the plan learns and adapts to {childName}</span>
+              </div>
+            </div>
+            <div className="text-xs text-gray-400 mt-2.5">That&apos;s it. Everything else — goals, materials, progress — flows from these 5 minutes.</div>
+          </div>
+        )}
 
         {/* Hero: this week's focus with the practice loop built in */}
         <WeeklyFocusCard
