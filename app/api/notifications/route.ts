@@ -146,7 +146,7 @@ async function generateNotifications(
         type: 'streak',
         title: `🔥 ${streak} days in a row`,
         body: `${streak} straight days of ${practisedText}. This daily repetition is exactly how new skills stick for ${childName}.`,
-        action_url: `/progress?child=${childId}`,
+        action_url: `/goals?child=${childId}`,
       })
     }
   }

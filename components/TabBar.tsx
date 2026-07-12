@@ -2,13 +2,13 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-// The one navigation system (UX_PLAN.md P2). Five stable destinations, one name each,
-// present on every parent screen. Child Zone is deliberately absent — it's launched
-// for the child from Today, not browsed to as a parent tab.
+// The one navigation system (UX_PLAN.md P2, consolidated in Round 2). Four stable
+// destinations, one name each, on every parent screen. Child Zone is deliberately
+// absent — it's launched for the child from Today, not browsed to as a parent tab.
+// Progress was folded into Plan (Round 2): records live at the bottom of the journey.
 const TABS = [
   { href: '/dashboard', icon: '🏠', label: 'Today' },
-  { href: '/goals', icon: '🎯', label: 'Goals' },
-  { href: '/progress', icon: '📈', label: 'Progress' },
+  { href: '/goals', icon: '🎯', label: 'Plan' },
   { href: '/content', icon: '📦', label: 'Materials' },
   { href: '/ai', icon: '💬', label: 'Ask' },
 ]

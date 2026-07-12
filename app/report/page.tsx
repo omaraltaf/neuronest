@@ -91,7 +91,7 @@ function ReportContent() {
       {/* Screen controls */}
       <div className="no-print bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href={`/progress?child=${childId}`} className="text-gray-400 hover:text-gray-600 text-sm flex items-center gap-1">
+          <Link href={`/goals?child=${childId}`} className="text-gray-400 hover:text-gray-600 text-sm flex items-center gap-1">
             ← Back
           </Link>
           <div className="font-black text-sm text-gray-900">Progress Report</div>

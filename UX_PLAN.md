@@ -118,3 +118,28 @@ One screen, one question: *what should I do right now?*
 | 5 | P5+P6 copy & accessibility pass | all screens, mechanical |
 
 Steps 1–3 deliver ~80% of the felt improvement.
+
+---
+
+# Round 2 — Screen-by-Screen Consolidation (2026-07-06)
+
+*Trigger: field feedback after guided mode — "still lost, too many things, materials not connected to goals." Test applied to every screen: a busy, non-digital-savvy parent should never have to figure out where to go.*
+
+## Decisions
+
+| Screen | Decision |
+|---|---|
+| Today | Keep (the spine). Lead the hero with the ACTION ("Today's 5 minutes: X"), not the focus title. Surface the week-ahead question on the card whenever unanswered — buried under "Full plan" it starves the content-anticipation feature. |
+| Goals | Keep, becomes the **Plan** tab. Each working-on-now goal links to its materials inline ("N materials ready →"). Gains a quiet "History & records" block at the bottom: last check-in wins/recommendation + start-checkin link, recent sessions, report & documents links. |
+| Progress | **Removed as a tab.** Stat tiles/heatmap were analyst UI duplicating Today's momentum line; all-goals list duplicated Goals. Route becomes a redirect to Plan (old notification links must keep working). |
+| Materials | Keep. Generate modal shows the 2 parent-legible types first (activity pack, story); flashcards/sensory/role-play behind "More types". Supports ?goal= deep link from Plan. |
+| Ask | Keep as-is. |
+| Check-in | Not a tab (unchanged); its summary lives in Plan's History block. |
+| Child Zone | Untouched. |
+| Documents / Report | Reached from Plan → History & records. |
+
+## Resulting IA — 4 tabs
+
+🏠 Today (do this now) · 🎯 Plan (the journey + records) · 📦 Materials (recommended first) · 💬 Ask
+
+Every piece of data is displayed in exactly ONE place. Goal↔material cross-links kill the last "go hunting" flow.

@@ -167,13 +167,14 @@ function GoalProposalCard({ proposal, sourceGoalLabel, child, onResolved }: {
   )
 }
 
-export default function GoalsClient({ child, goals, recentLogs, proposals, focusGoalIds }: {
+export default function GoalsClient({ child, goals, recentLogs, proposals, focusGoalIds, goalContent, latestCheckin }: {
   child: Record<string, unknown>
   goals: Record<string, unknown>[]
   recentLogs: Record<string, unknown>[]
   proposals: Record<string, unknown>[]
   focusGoalIds: string[]
-  filterArea?: string | null
+  goalContent: { goal_id: string | null; content_type: string }[]
+  latestCheckin: Record<string, unknown> | null
 }) {
   const router = useRouter()
   const supabase = createClient()
@@ -229,6 +230,12 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
   for (const log of recentLogs) {
     const gid = log.goal_id as string
     if (gid) logCountByGoal[gid] = (logCountByGoal[gid] || 0) + 1
+  }
+
+  // Materials per goal — so a goal links straight to its materials, no hunting
+  const contentCountByGoal: Record<string, number> = {}
+  for (const c of goalContent) {
+    if (c.goal_id) contentCountByGoal[c.goal_id] = (contentCountByGoal[c.goal_id] || 0) + 1
   }
 
   const renderGoalCard = (goal: Record<string, unknown>, dimmed = false) => {
@@ -296,6 +303,21 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
               </button>
             ) : null}
 
+            {/* The goal's materials — one tap away, never hunted for (Round 2) */}
+            {status !== 'achieved' && (
+              (contentCountByGoal[goal.id as string] || 0) > 0 ? (
+                <Link href={`/content?child=${childId}&goal=${goal.id as string}`}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-violet-50 text-violet-700 font-bold text-sm border border-violet-100 min-h-[48px]">
+                  📦 {contentCountByGoal[goal.id as string]} material{(contentCountByGoal[goal.id as string] || 0) > 1 ? 's' : ''} for this goal →
+                </Link>
+              ) : status !== 'not_started' ? (
+                <Link href={`/content?child=${childId}`}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-violet-50 text-violet-700 font-bold text-sm border border-violet-100 min-h-[48px]">
+                  📦 Get materials for this goal →
+                </Link>
+              ) : null
+            )}
+
             {/* Status update */}
             <div>
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Update status</div>
@@ -333,8 +355,8 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
       <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
-            <div className="font-black text-sm text-gray-900">Goals</div>
-            <div className="text-xs text-gray-400">{childName}&apos;s plan · Dr. Santos — your planner</div>
+            <div className="font-black text-sm text-gray-900">Plan</div>
+            <div className="text-xs text-gray-400">{childName}&apos;s journey · Dr. Santos — your planner</div>
           </div>
           <div className="text-sm font-bold text-violet-600 bg-violet-50 px-3 py-1.5 rounded-full">
             {achievedGoals.length}/{goals.length} achieved
@@ -446,6 +468,74 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
             )}
           </section>
         )}
+
+        {/* History & records — Progress folded in here (Round 2): the useful remains */}
+        <section className="pt-4">
+          <h2 className="text-sm font-black text-gray-500 mb-2 px-1">History & records</h2>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            {/* Last check-in */}
+            <div className="px-4 py-3.5 border-b border-gray-50">
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-sm font-bold text-gray-800">Weekly chat with Dr. Eriksson — your coach</div>
+                <Link href={`/checkin?child=${childId}`} className="text-sm text-violet-600 font-semibold py-1 flex-shrink-0">
+                  {latestCheckin ? 'Open →' : 'Start →'}
+                </Link>
+              </div>
+              {latestCheckin ? (
+                <>
+                  {((latestCheckin.wins || []) as string[]).slice(0, 2).map((w, i) => (
+                    <div key={i} className="text-sm text-gray-600 flex gap-1.5 mb-0.5">
+                      <span className="text-emerald-500 flex-shrink-0">✓</span><span>{w}</span>
+                    </div>
+                  ))}
+                  {((latestCheckin.recommendations || []) as string[]).slice(0, 1).map((r, i) => (
+                    <div key={i} className="text-sm text-gray-600 flex gap-1.5">
+                      <span className="text-violet-400 flex-shrink-0">→</span><span>{r}</span>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <div className="text-sm text-gray-400">A 15-minute chat each week keeps the plan on track.</div>
+              )}
+            </div>
+
+            {/* Recent practice */}
+            {recentLogs.length > 0 && (
+              <div className="px-4 py-3.5 border-b border-gray-50">
+                <div className="text-sm font-bold text-gray-800 mb-1.5">Recent practice</div>
+                {recentLogs.slice(0, 5).map(log => (
+                  <div key={log.id as string} className="flex items-center gap-2.5 py-1">
+                    <span className="text-base">{log.rating ? ['','😰','😕','😐','😊','🌟'][log.rating as number] : '✓'}</span>
+                    <span className="flex-1 text-sm text-gray-600 truncate">{log.activity_title as string}</span>
+                    <span className="text-xs text-gray-400 flex-shrink-0">
+                      {new Date(log.logged_at as string).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Reports & files */}
+            <Link href={`/report?child=${childId}`}
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 border-b border-gray-50 transition">
+              <span className="text-xl">📋</span>
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-gray-800">Progress report</div>
+                <div className="text-xs text-gray-400">Print or save a PDF for school or clinicians</div>
+              </div>
+              <span className="text-gray-300">›</span>
+            </Link>
+            <Link href={`/documents?child=${childId}`}
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition">
+              <span className="text-xl">📄</span>
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-gray-800">Add documents</div>
+                <div className="text-xs text-gray-400">Upload assessments or reports to enrich {childName}&apos;s profile</div>
+              </div>
+              <span className="text-gray-300">›</span>
+            </Link>
+          </div>
+        </section>
       </div>
 
       {/* Floating quick-log (UX_PLAN.md P3): two taps to a rating from anywhere */}

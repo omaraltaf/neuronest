@@ -98,14 +98,17 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
         <p className="text-sm text-violet-100 mt-2 leading-relaxed">🌟 {data.celebrate as string}</p>
       )}
 
-      {/* The practice loop, right here */}
+      {/* The practice loop, right here — the ACTION is the headline (Round 2):
+          a busy parent wants "do this now", not a title to interpret */}
       <div className="mt-4 flex gap-2">
         <button onClick={() => setShowStarter(s => !s)}
-          className="flex-1 py-3.5 rounded-2xl bg-white text-violet-700 font-black text-sm active:scale-95 transition min-h-[48px]">
-          {practisedToday ? '✓ Practised today · again?' : "▶ Today's 5 minutes"}
+          className="flex-1 py-3.5 px-3 rounded-2xl bg-white text-violet-700 font-black text-sm leading-snug active:scale-95 transition min-h-[48px] text-left">
+          {practisedToday
+            ? '✓ Practised today · again?'
+            : <>▶ Today&apos;s 5 minutes{activity ? <span className="font-bold">: {activity.title as string}</span> : null}</>}
         </button>
         <button onClick={() => setShowPlan(p => !p)}
-          className="px-4 py-3.5 rounded-2xl bg-white/15 hover:bg-white/25 font-bold text-sm transition min-h-[48px]">
+          className="px-4 py-3.5 rounded-2xl bg-white/15 hover:bg-white/25 font-bold text-sm transition min-h-[48px] flex-shrink-0">
           {showPlan ? 'Less ↑' : 'Full plan ↓'}
         </button>
       </div>
@@ -124,6 +127,29 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
             className="mt-3 w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm transition min-h-[48px]">
             ✓ We did it — log it
           </button>
+        </div>
+      )}
+
+      {/* Week-ahead question surfaces on the card until answered (Round 2) — buried in
+          "Full plan" it starves the content-anticipation loop. One sentence from the
+          parent = materials prepared before real events + a grounded plan next Monday. */}
+      {!showPlan && (data.week_ahead_question as string) && !(data.week_ahead_answer as string) && !answerResult && (
+        <div className="mt-3 bg-white/10 rounded-2xl p-4">
+          <div className="text-sm text-violet-50 leading-relaxed">💬 {data.week_ahead_question as string}</div>
+          <div className="mt-2 flex gap-2">
+            <input value={weekAnswer} onChange={e => setWeekAnswer(e.target.value)}
+              placeholder="One sentence is plenty…"
+              className="flex-1 px-3.5 py-3 rounded-xl text-sm text-gray-800 bg-white/90 placeholder-gray-400 focus:outline-none" />
+            <button onClick={sendWeekAnswer} disabled={sendingAnswer || !weekAnswer.trim()}
+              className="text-sm font-bold px-4 py-3 rounded-xl bg-white text-violet-700 disabled:opacity-50 transition min-h-[44px]">
+              {sendingAnswer ? '…' : 'Send'}
+            </button>
+          </div>
+        </div>
+      )}
+      {!showPlan && answerResult && (
+        <div className="mt-3 bg-white/10 rounded-2xl p-4 text-sm text-violet-50 leading-relaxed">
+          ✨ Thanks! Emma prepared <span className="font-bold">&ldquo;{answerResult.title}&rdquo;</span> for {answerResult.opportunity} — it&apos;s in Materials.
         </div>
       )}
 

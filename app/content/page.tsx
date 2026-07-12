@@ -648,6 +648,13 @@ function GenerateModal({ goals, child, onGenerate, onClose, generating }: {
 }) {
   const [selectedGoal, setSelectedGoal] = useState((goals[0]?.id as string) || '')
   const [selectedType, setSelectedType] = useState('activity_pack')
+  // Activity pack + story are the two types every parent understands; the clinical
+  // trio (flashcards/sensory/role-play) waits behind "More types" (Round 2)
+  const [showAllTypes, setShowAllTypes] = useState(false)
+  const PRIMARY_TYPE_IDS = ['activity_pack', 'social_story']
+  const visibleTypes = showAllTypes
+    ? CONTENT_TYPES
+    : CONTENT_TYPES.filter(ct => PRIMARY_TYPE_IDS.includes(ct.id))
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center px-0 sm:px-4">
@@ -671,7 +678,7 @@ function GenerateModal({ goals, child, onGenerate, onClose, generating }: {
           <div>
             <label className="block text-xs font-bold text-gray-600 mb-2">Content type</label>
             <div className="space-y-2">
-              {CONTENT_TYPES.map(ct => (
+              {visibleTypes.map(ct => (
                 <button key={ct.id} onClick={() => setSelectedType(ct.id)}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl border text-left transition ${
                     selectedType === ct.id ? 'border-violet-400 bg-violet-50' : 'border-gray-200 hover:border-gray-300'
@@ -683,6 +690,12 @@ function GenerateModal({ goals, child, onGenerate, onClose, generating }: {
                   </div>
                 </button>
               ))}
+              {!showAllTypes && (
+                <button onClick={() => setShowAllTypes(true)}
+                  className="w-full py-2.5 text-sm font-semibold text-violet-600 hover:text-violet-700 transition">
+                  More types ▾
+                </button>
+              )}
             </div>
           </div>
 
@@ -701,6 +714,8 @@ function ContentContent() {
   const params = useSearchParams()
   const childId = params.get('child') || ''
   const supabase = createClient()
+  // Deep link from a goal card on the Plan tab (Round 2): show only that goal's materials
+  const [goalFilter, setGoalFilter] = useState<string | null>(params.get('goal'))
 
   const [child, setChild] = useState<Record<string, unknown> | null>(null)
   const [goals, setGoals] = useState<Record<string, unknown>[]>([])
@@ -854,7 +869,10 @@ function ContentContent() {
     window.open(printUrl, '_blank')
   }
 
-  const filtered = filterType ? contentItems.filter(c => c.content_type === filterType) : contentItems
+  const filtered = contentItems.filter(c =>
+    (!filterType || c.content_type === filterType) &&
+    (!goalFilter || c.goal_id === goalFilter)
+  )
 
   return (
     <>
@@ -890,6 +908,20 @@ function ContentContent() {
         </header>
 
         <div className="max-w-2xl mx-auto px-4 py-4 space-y-3 pb-28">
+          {goalFilter && (
+            <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3 flex items-center gap-2">
+              <span className="flex-1 text-sm text-violet-800">
+                Showing materials for <span className="font-bold">
+                  &ldquo;{(goals.find(g => g.id === goalFilter)?.label as string) || 'this goal'}&rdquo;
+                </span>
+              </span>
+              <button onClick={() => setGoalFilter(null)}
+                className="text-sm font-bold text-violet-600 px-3 py-2 min-h-[44px]">
+                Show all ✕
+              </button>
+            </div>
+          )}
+
           {generating && (
             <div className="bg-violet-50 border border-violet-100 rounded-2xl p-4 flex items-center gap-3">
               <div className="flex gap-1"><div className="typing-dot"/><div className="typing-dot"/><div className="typing-dot"/></div>
