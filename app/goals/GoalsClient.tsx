@@ -257,11 +257,17 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-bold text-sm text-gray-900 leading-snug">{goal.label as string}</div>
-            <div className="flex items-center gap-2 mt-1.5">
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: scfg.dot }} />
               <span className="text-sm font-medium" style={{ color: scfg.color }}>{scfg.label}</span>
               {recentLogCount > 0 && (
                 <span className="text-sm text-emerald-600 font-medium">· {recentLogCount}x this month</span>
+              )}
+              {/* The thread from Today's focus card back to the plan (2026-07-13) */}
+              {focusGoalIds.includes(goal.id as string) && status !== 'achieved' && (
+                <span className="inline-flex items-center gap-1 bg-violet-50 border border-violet-100 text-violet-700 rounded-full px-2.5 py-0.5 text-xs font-bold">
+                  ⭐ this week&apos;s focus
+                </span>
               )}
             </div>
           </div>

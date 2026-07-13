@@ -87,12 +87,25 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
   const tip = data.coaching_tip as Record<string, string> | undefined
   const activity = data.starter_activity as Record<string, unknown> | undefined
   const embeds = (data.embed_opportunities || []) as Record<string, string>[]
-  const primaryGoalId = ((data.primary_goal_ids || []) as string[])[0] || null
+  const primaryGoalIds = (data.primary_goal_ids || []) as string[]
+  const primaryGoalId = primaryGoalIds[0] || null
+  // The thread to the plan, made visible (field feedback 2026-07-13): the focus is
+  // this week's step INSIDE the plan — show which goal(s) it serves
+  const focusGoals = goals.filter(g => primaryGoalIds.includes(g.id))
 
   return (
     <div className="bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-3xl px-5 py-5 shadow-md shadow-violet-200">
-      <div className="text-xs font-bold text-violet-200 uppercase tracking-wide">This week&apos;s focus · Dr. Santos — your planner</div>
+      <div className="text-xs font-bold text-violet-200 uppercase tracking-wide">This week&apos;s step in the plan · Dr. Santos — your planner</div>
       <div className="font-black text-lg mt-1 leading-snug">{data.focus_title as string}</div>
+      {focusGoals.length > 0 && (
+        <Link href={`/goals?child=${childId}`} className="mt-2 flex flex-wrap gap-1.5">
+          {focusGoals.map(g => (
+            <span key={g.id} className="inline-flex items-center gap-1 bg-white/15 rounded-full px-3 py-1.5 text-xs font-bold text-violet-50">
+              🎯 {g.label} ›
+            </span>
+          ))}
+        </Link>
+      )}
       <p className="text-sm text-violet-100 mt-2 leading-relaxed">{data.focus_reason as string}</p>
       {(data.celebrate as string) && (
         <p className="text-sm text-violet-100 mt-2 leading-relaxed">🌟 {data.celebrate as string}</p>
