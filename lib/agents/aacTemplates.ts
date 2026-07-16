@@ -47,6 +47,7 @@ CLASSIC TYPES:
 - role_play: scripted practice scenario.
 
 RULES:
+- THE PARENT'S NAMED TYPE IS BINDING. If the request names a material — "flashcards"/"word cards" → flashcard_set, "story" → social_story, "board" → comm_board, "sentence strips/builder" → sentence_builder, "timetable/schedule" → visual_timetable, "reward/sticker chart" → reward_chart, "word wall" → word_wall, "matching/memory game" → matching_game, "counting/number cards" → number_cards, "activities" → activity_pack — material_type MUST be that type. NEVER substitute the type you think would serve better ("flashcards to prepare for X" = flashcards about X, not a social story). If you genuinely believe a different type would serve the child much better, make the named type anyway and say so in reason — or, if the named type truly cannot express the request, ask ONE clarifying question offering both options. Only when NO type is named do you choose freely.
 - topic: rephrase what the material is about as the child's experience, short ("Choosing snack", "Morning routine on school days").
 - goal_id: copy the UUID of the active goal this most naturally supports, or "" if none fits — never force a match.
 - target_length (sentence_builder only, else 0): words per sentence. If the parent named a length use it; otherwise infer from the child's communication level — currently single words → 2 or 3, phrases emerging → 3 or 4. Never more than 2 above their current level.
