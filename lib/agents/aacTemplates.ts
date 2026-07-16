@@ -33,6 +33,11 @@ AAC STUDIO TYPES (symbol-based, printable):
 - comm_board: a grid of symbol cells the child points at to communicate — choice boards ("choose a snack"), core word boards, topic boards. Pick when the parent wants the child to SELECT or REQUEST between options.
 - sentence_builder: colour-coded word strips the child cuts out and assembles into sentences ("I want juice"). THE progressive sentence-construction type. Pick when the parent mentions sentences, phrases, word combinations, or building/expanding language.
 - visual_timetable: a vertical sequence of activities with times — morning routines, school days, bedtime routines. Pick when the parent wants a schedule, routine, or "what happens next" support.
+- comprehension: a short symbol-supported story with picture-choice questions. Pick when the parent wants to check or build UNDERSTANDING — story questions, "did she understand", listening comprehension.
+- number_cards: counting cards — a numeral plus that many repeated symbols. Pick for numbers, counting, early maths readiness.
+- reward_chart: a token chart toward a reward the child earns. Pick for sticker/star charts, motivation systems, working-towards boards.
+- word_wall: a themed vocabulary sheet grouped by Fitzgerald colour. Pick for vocabulary displays, word posters, topic word collections.
+- matching_game: cut-out matching pairs (picture↔picture first, picture↔word harder). Pick for matching, memory, or pairing games.
 
 CLASSIC TYPES:
 - social_story: first-person story preparing the child for an event or situation (dentist, haircut, new sibling).
@@ -66,7 +71,7 @@ export const AAC_ROUTER_SCHEMA = {
   properties: {
     material_type: {
       type: 'string',
-      enum: ['comm_board', 'sentence_builder', 'visual_timetable', 'social_story', 'activity_pack', 'flashcard_set', 'sensory_card', 'role_play'],
+      enum: ['comm_board', 'sentence_builder', 'visual_timetable', 'comprehension', 'number_cards', 'reward_chart', 'word_wall', 'matching_game', 'social_story', 'activity_pack', 'flashcard_set', 'sensory_card', 'role_play'],
     },
     topic: { type: 'string', description: "What the material is about, as the child's experience" },
     goal_id: { type: 'string', description: 'UUID of the best-matching active goal, or empty string' },
@@ -225,6 +230,178 @@ ${childBlock(c)}`,
       },
     },
   },
+  comprehension: {
+    prompt: (c) => `Create a symbol-supported comprehension sheet for ${c.child.name}: ${c.topic}.
+
+A comprehension sheet is a very short story told with symbols, followed by picture-choice questions. Rules:
+- story: 3-5 short sentences at the child's language level, each with a symbol concept for its key idea. Concrete, about ${c.child.name}'s real world.
+- questions: 2-4, each with exactly 3 picture choices. ERRORLESS DESIGN: the correct choice must be a concept that visibly appeared in the story, so the child can find the answer by looking back — never a trick, never two plausible answers.
+- Question language simpler than the story language. Start with "who/what/where" — never "why" unless the child is at sentence level.
+- how_to_use: 2-3 sentences — read the story together pointing at each symbol, then ask each question and let ${c.child.name} point at a picture; if unsure, look back at the story together (that IS the skill).
+${childBlock(c)}`,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['title', 'theme_emoji', 'how_to_use', 'story', 'questions'],
+      properties: {
+        title: { type: 'string' },
+        theme_emoji: { type: 'string' },
+        how_to_use: { type: 'string' },
+        story: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['text', 'emoji', 'concept', 'symbol_description'],
+            properties: {
+              text: { type: 'string' },
+              emoji: { type: 'string' },
+              concept: { type: 'string', description: "The sentence's key idea as a lowercase searchable keyword" },
+              symbol_description: { type: 'string', description: 'One-line AAC symbol scene, or empty string' },
+            },
+          },
+        },
+        questions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['question', 'choices', 'answer_idx'],
+            properties: {
+              question: { type: 'string' },
+              choices: { type: 'array', description: 'Exactly 3', items: WORD_CELL },
+              answer_idx: { type: 'integer', description: '0-based index of the correct choice' },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  number_cards: {
+    prompt: (c) => `Create counting cards for ${c.child.name}: ${c.topic}.
+
+Counting cards show a numeral next to that many repeated symbols ("3" + three apples) — quantity made visible. Rules:
+- Pick ONE counted thing from ${c.child.name}'s genuine interests or the topic (thing_word + concept) — the SAME thing on every card, repeated count times. Consistency is the point.
+- range: start at 1; end at 5 for early counters, 10 only if the goals show number work. Cards in order.
+- number_word: the number word in the child's language ("three").
+- how_to_use: 2-3 sentences — count aloud together touching each symbol once (one-to-one correspondence is the skill, not reciting), then say the numeral. Extension: "give me 3" games with real objects.
+${childBlock(c)}`,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['title', 'theme_emoji', 'how_to_use', 'thing_word', 'concept', 'emoji', 'symbol_description', 'cards'],
+      properties: {
+        title: { type: 'string' },
+        theme_emoji: { type: 'string' },
+        how_to_use: { type: 'string' },
+        thing_word: { type: 'string', description: 'The counted thing, singular' },
+        concept: { type: 'string', description: 'Lowercase searchable keyword for the counted thing' },
+        emoji: { type: 'string' },
+        symbol_description: { type: 'string', description: 'One-line AAC symbol scene, or empty string' },
+        cards: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['numeral', 'number_word'],
+            properties: {
+              numeral: { type: 'integer' },
+              number_word: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  reward_chart: {
+    prompt: (c) => `Create a reward chart for ${c.child.name}: ${c.topic}.
+
+A reward chart is a token board: the child earns a token symbol for each success and trades the full board for a reward. Rules:
+- goal_text: the ONE behaviour being rewarded, in plain positive parent words ("Arya uses her squeeze when upset") — observable, achievable several times a day, never "be good".
+- steps: 5 tokens for young/new-to-charts children, 10 only for chart veterans.
+- token: something the child loves as the earning symbol (their interest beats a generic star).
+- reward: the actual reward THIS child works for, from their genuine interests — this is often personalised, so give it a rich symbol_description for generation.
+- celebration_text: exactly what the parent says/does when the board fills.
+- how_to_use: 2-3 sentences — token IMMEDIATELY after the behaviour with specific praise naming what they did; never remove earned tokens (earned = earned, always); when full, reward straight away.
+${childBlock(c)}`,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['title', 'theme_emoji', 'how_to_use', 'goal_text', 'steps', 'token', 'reward', 'celebration_text'],
+      properties: {
+        title: { type: 'string' },
+        theme_emoji: { type: 'string' },
+        how_to_use: { type: 'string' },
+        goal_text: { type: 'string' },
+        steps: { type: 'integer' },
+        token: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['word', 'concept', 'emoji', 'symbol_description'],
+          properties: {
+            word: { type: 'string' }, concept: { type: 'string' },
+            emoji: { type: 'string' }, symbol_description: { type: 'string' },
+          },
+        },
+        reward: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['word', 'concept', 'emoji', 'symbol_description'],
+          properties: {
+            word: { type: 'string' }, concept: { type: 'string' },
+            emoji: { type: 'string' }, symbol_description: { type: 'string' },
+          },
+        },
+        celebration_text: { type: 'string' },
+      },
+    },
+  },
+
+  word_wall: {
+    prompt: (c) => `Create a word wall for ${c.child.name}: ${c.topic}.
+
+A word wall is a themed vocabulary sheet the family mounts where the words get used (kitchen words in the kitchen). Words are grouped by Fitzgerald colour so the child absorbs word-class colour-coding. Rules:
+- 8-14 words on the theme, spanning at least 3 word classes (things alone don't build sentences — include the actions and describing words that go WITH the things).
+- Every word must be usable by ${c.child.name} this week: real vocabulary at their level, not aspirational.
+- how_to_use: 2-3 sentences — mount at child height where the theme happens, point at words during the routine as you say them, and let ${c.child.name} point too. The wall is for USING, not testing.
+${childBlock(c)}`,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['title', 'theme_emoji', 'how_to_use', 'theme', 'words'],
+      properties: {
+        title: { type: 'string' },
+        theme_emoji: { type: 'string' },
+        how_to_use: { type: 'string' },
+        theme: { type: 'string' },
+        words: { type: 'array', items: WORD_CELL },
+      },
+    },
+  },
+
+  matching_game: {
+    prompt: (c) => `Create a matching game for ${c.child.name}: ${c.topic}.
+
+A matching game is a set of cut-out card pairs. Progression (Emma's standard): picture↔picture first (find the two the same), picture↔word only when the child is reading-ready. Rules:
+- mode: choose from the child's level — "picture_picture" unless their goals show letter/word recognition, then "picture_word".
+- 6-8 pairs on the topic, drawn from ${c.child.name}'s genuine interests. Every pair a clearly distinct concept (never two that look alike — the child must succeed by looking).
+- how_to_use: 2-3 sentences — start with 2-3 pairs face up ("find the same!"), grow to more pairs and face-down memory play as the child succeeds. Errorless first: hold out one card and let ${c.child.name} find its partner.
+${childBlock(c)}`,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['title', 'theme_emoji', 'how_to_use', 'mode', 'pairs'],
+      properties: {
+        title: { type: 'string' },
+        theme_emoji: { type: 'string' },
+        how_to_use: { type: 'string' },
+        mode: { type: 'string', enum: ['picture_picture', 'picture_word'] },
+        pairs: { type: 'array', items: WORD_CELL },
+      },
+    },
+  },
 }
 
 // Walk a generated material and collect every concept for resolve-symbols.
@@ -243,6 +420,21 @@ export function extractConcepts(materialType: string, content: Record<string, un
       for (const w of s.words || []) push(w)
   } else if (materialType === 'visual_timetable') {
     for (const e of (content.entries as Record<string, unknown>[]) || []) push(e)
+  } else if (materialType === 'flashcard_set' || materialType === 'child_zone_cards') {
+    for (const c of (content.cards as Record<string, unknown>[]) || []) push(c)
+  } else if (materialType === 'comprehension') {
+    for (const s of (content.story as Record<string, unknown>[]) || []) push(s)
+    for (const q of (content.questions as { choices?: Record<string, unknown>[] }[]) || [])
+      for (const ch of q.choices || []) push(ch)
+  } else if (materialType === 'number_cards') {
+    push(content)
+  } else if (materialType === 'reward_chart') {
+    if (content.token) push(content.token as Record<string, unknown>)
+    if (content.reward) push(content.reward as Record<string, unknown>)
+  } else if (materialType === 'word_wall') {
+    for (const w of (content.words as Record<string, unknown>[]) || []) push(w)
+  } else if (materialType === 'matching_game') {
+    for (const p of (content.pairs as Record<string, unknown>[]) || []) push(p)
   }
   return out
 }

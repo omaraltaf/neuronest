@@ -31,17 +31,26 @@ type RouterDecision = {
 type ClarificationAnswer = { question: string; answer: string }
 
 async function callClaude(body: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY!,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(`anthropic ${res.status}: ${(await res.text()).slice(0, 200)}`)
-  return res.json()
+  let lastErr: Error | null = null
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt))
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+    })
+    if (res.ok) return res.json()
+    const detail = `anthropic ${res.status}: ${(await res.text()).slice(0, 200)}`
+    // Overloaded/rate-limited/5xx are transient — a parent mid-request deserves a retry
+    if (![429, 500, 502, 503, 529].includes(res.status)) throw new Error(detail)
+    lastErr = new Error(detail)
+    console.error(`callClaude attempt ${attempt + 1}: ${detail}`)
+  }
+  throw lastErr
 }
 
 function textOf(response: Record<string, unknown>): string {

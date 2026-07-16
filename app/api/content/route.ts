@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resolveModel } from '@/lib/agents/models'
 import { CONTENT_AGENT_PROMPT } from '@/lib/agents/prompts'
 import { TYPE_PROMPTS, VISUAL_INSTRUCTION } from '@/lib/agents/contentTemplates'
+import { extractConcepts } from '@/lib/agents/aacTemplates'
+
+// Concept-carrying types get their AAC symbols resolved in the shared per-concept
+// library (resolve-symbols Edge Function) — fired from here because the browser must
+// never see the cron secret. Fire-and-forget; emoji is the UI fallback until they land.
+function fireResolveSymbols(contentType: string, content: Record<string, unknown>, lang: string) {
+  const concepts = extractConcepts(contentType, content).map(c => ({ ...c, language: lang }))
+  if (!concepts.length || !process.env.WEEKLY_FOCUS_CRON_SECRET) return
+  fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/resolve-symbols`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-cron-secret': process.env.WEEKLY_FOCUS_CRON_SECRET },
+    body: JSON.stringify({ concepts }),
+  }).catch(err => console.error('resolve-symbols trigger failed:', err))
+}
 
 export async function POST(req: NextRequest) {
   const { goal, child, contentType, language, feedback, currentContent, action } = await req.json()
@@ -61,7 +75,9 @@ Return ONLY valid JSON — no markdown, no explanation.`
     const text = data.content?.find((c: { type: string }) => c.type === 'text')?.text || '{}'
     try {
       const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      return NextResponse.json({ content: JSON.parse(clean) })
+      const parsed = JSON.parse(clean)
+      fireResolveSymbols(contentType, parsed, language || 'en')
+      return NextResponse.json({ content: parsed })
     } catch {
       return NextResponse.json({ content: { raw: text }, error: 'Parse failed' })
     }

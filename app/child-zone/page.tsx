@@ -410,9 +410,25 @@ function ChildZoneContent() {
       .then(res => res.json())
       .then(async ({ cards, contentId }) => {
         if (!cards?.cards?.length) return
-        // AAC symbol images live in the shared story_images cache, keyed by card index
+        type CardData = { emoji: string; word: string; concept?: string; sound: string; colour: string }
+        const cardList = cards.cards as CardData[]
+
+        // AAC symbol images: concept-keyed shared library first (aac_symbols); sets
+        // cached before the concept switch fall back to the old per-content
+        // story_images cache until they regenerate on the next goal change
+        const imageByConcept: Record<string, string> = {}
+        const conceptList = cardList.map(c => (c.concept || '').toLowerCase()).filter(Boolean)
+        if (conceptList.length) {
+          const { data: symbols } = await supabase.from('aac_symbols')
+            .select('concept, storage_path').in('concept', conceptList)
+          for (const s of symbols || []) {
+            const { data: urlData } = supabase.storage
+              .from('neuronest-documents').getPublicUrl(s.storage_path as string)
+            imageByConcept[s.concept as string] = urlData.publicUrl
+          }
+        }
         const imageByIndex: Record<number, string> = {}
-        if (contentId) {
+        if (!conceptList.length && contentId) {
           const { data: images } = await supabase.from('story_images')
             .select('sentence_index, storage_path').eq('content_id', contentId)
           for (const img of images || []) {
@@ -423,9 +439,9 @@ function ChildZoneContent() {
         }
         setGoalCards({
           setLabel: cards.set_label || 'My Words',
-          cards: cards.cards.map((c: { emoji: string; word: string; sound: string; colour: string }, i: number) => ({
+          cards: cardList.map((c, i) => ({
             emoji: c.emoji, word: c.word, sound: c.sound, colour: c.colour,
-            image: imageByIndex[i],
+            image: imageByConcept[(c.concept || '').toLowerCase()] || imageByIndex[i],
           })),
         })
       })

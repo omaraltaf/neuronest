@@ -109,6 +109,8 @@ AAC STANDARDS (non-negotiable — these children often already use AAC/ASK symbo
 - One concept per card, zero visual clutter.
 - Card "colour" follows the modified Fitzgerald Key by word class — never decorative:
   people #F59E0B (yellow) · actions/verbs #16A34A (green) · describing words #5B7FE8 (blue) · things/nouns #F97316 (orange) · social words #DB2777 (pink) · question words #7C3AED (purple)
+- "concept": the word's plain dictionary-form meaning as a lowercase searchable keyword (1-2 words) — this fetches the real AAC symbol image from the shared library ("Mummy" → "mother").
+- "symbol_description": one-line AAC symbol scene (Widgit/Boardmaker style, one clear concept, no depicted child) used only if the library must generate the symbol.
 
 Return JSON:
 {
@@ -119,6 +121,8 @@ Return JSON:
   "cards": [
     {
       "word": "TARGET WORD",
+      "concept": "lowercase keyword",
+      "symbol_description": "one-line AAC symbol scene",
       "big_emoji": "🐶",
       "category_emoji": "🐾",
       "colour": "#hex",

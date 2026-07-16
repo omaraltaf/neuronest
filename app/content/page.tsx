@@ -5,7 +5,11 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import TabBar from '@/components/TabBar'
-import { CommBoardViewer, SentenceBuilderViewer, VisualTimetableViewer } from './aacViewers'
+import {
+  CommBoardViewer, SentenceBuilderViewer, VisualTimetableViewer,
+  ComprehensionViewer, NumberCardsViewer, RewardChartViewer, WordWallViewer, MatchingGameViewer,
+  useAacSymbols,
+} from './aacViewers'
 
 const CONTENT_TYPES = [
   { id: 'social_story',   icon: '📖', label: 'Social Story',     desc: 'Personalised story with emoji sentences' },
@@ -14,6 +18,11 @@ const CONTENT_TYPES = [
   { id: 'sentence_builder', icon: '🧩', label: 'Sentence Builder', desc: 'Cut-out word strips to build sentences' },
   { id: 'visual_timetable', icon: '🕐', label: 'Visual Timetable', desc: 'Symbol schedule for daily routines' },
   { id: 'flashcard_set',  icon: '🃏', label: 'Flashcard Set',    desc: 'Visual vocabulary cards with prompts' },
+  { id: 'comprehension',  icon: '❓', label: 'Comprehension',    desc: 'Symbol story with picture questions' },
+  { id: 'number_cards',   icon: '🔢', label: 'Number Cards',     desc: 'Counting cards with repeated symbols' },
+  { id: 'reward_chart',   icon: '🏆', label: 'Reward Chart',     desc: 'Token chart towards a reward' },
+  { id: 'word_wall',      icon: '🧱', label: 'Word Wall',        desc: 'Themed vocabulary sheet by colour' },
+  { id: 'matching_game',  icon: '🎴', label: 'Matching Game',    desc: 'Cut-out matching pairs to play' },
   { id: 'sensory_card',   icon: '🌀', label: 'Sensory Toolkit',  desc: 'Visual regulation strategies' },
   { id: 'role_play',      icon: '🎭', label: 'Role Play Script', desc: 'Visual scenario with cues' },
 ]
@@ -22,10 +31,12 @@ const TYPE_COLORS: Record<string, string> = {
   social_story: '#5B7FE8', activity_pack: '#E8635A',
   flashcard_set: '#7C3AED', sensory_card: '#16A34A', role_play: '#D97706',
   comm_board: '#0891B2', sentence_builder: '#059669', visual_timetable: '#B45309',
+  comprehension: '#2563EB', number_cards: '#F97316', reward_chart: '#CA8A04',
+  word_wall: '#DB2777', matching_game: '#10B981',
 }
 
 // AAC Studio types generate via /api/aac-studio (concept-keyed symbols); the rest via /api/content
-const AAC_STUDIO_TYPES = ['comm_board', 'sentence_builder', 'visual_timetable']
+const AAC_STUDIO_TYPES = ['comm_board', 'sentence_builder', 'visual_timetable', 'comprehension', 'number_cards', 'reward_chart', 'word_wall', 'matching_game']
 
 // ── Visual Renderers ──────────────────────────────────────────────────────────
 
@@ -265,12 +276,16 @@ function ActivityPackViewer({ data }: { data: Record<string, unknown> }) {
   )
 }
 
-function FlashcardViewer({ data }: { data: Record<string, unknown> }) {
+function FlashcardViewer({ data, language = 'en' }: { data: Record<string, unknown>; language?: string }) {
   const [activeCard, setActiveCard] = useState(0)
   const [showDetails, setShowDetails] = useState(false)
   const cards = (data.cards as Record<string, unknown>[]) || []
   const card = cards[activeCard]
   const colour = (data.theme_colour as string) || '#7C3AED'
+  // Real AAC symbols from the shared concept library (sets generated before the
+  // concept upgrade have no concept field and simply keep their emoji)
+  const symbols = useAacSymbols(cards.map(c => (c.concept as string) || ''), language)
+  const cardSymbol = card ? symbols[((card.concept as string) || '').toLowerCase()] : undefined
 
   return (
     <div className="space-y-3">
@@ -284,7 +299,17 @@ function FlashcardViewer({ data }: { data: Record<string, unknown> }) {
           <button onClick={() => setShowDetails(s => !s)}
             className="w-full rounded-2xl p-6 text-center transition active:scale-95"
             style={{ background: card.colour as string || colour, color: '#fff' }}>
-            <div className="text-7xl mb-3">{card.big_emoji as string}</div>
+            {cardSymbol ? (
+              <div className="flex justify-center mb-3">
+                <div className="bg-white rounded-2xl p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={cardSymbol.url} alt={card.word as string}
+                    style={{ width: 120, height: 120, objectFit: 'contain' }} />
+                </div>
+              </div>
+            ) : (
+              <div className="text-7xl mb-3">{card.big_emoji as string}</div>
+            )}
             <div className="text-3xl font-black tracking-wide">{card.word as string}</div>
             {!!card.pronunciation && (
               <div className="text-sm opacity-80 mt-1">{card.pronunciation as string}</div>
@@ -558,12 +583,17 @@ function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, onGenerateI
     switch (item.content_type) {
       case 'social_story':   return <SocialStoryViewer data={data} contentId={item.id as string} childId={(item as Record<string, unknown>).child_id as string} />
       case 'activity_pack':  return <ActivityPackViewer data={data} />
-      case 'flashcard_set':  return <FlashcardViewer data={data} />
+      case 'flashcard_set':  return <FlashcardViewer data={data} language={lang} />
       case 'sensory_card':   return <SensoryViewer data={data} />
       case 'role_play':      return <RolePlayViewer data={data} />
       case 'comm_board':     return <CommBoardViewer data={data} language={lang} />
       case 'sentence_builder': return <SentenceBuilderViewer data={data} language={lang} />
       case 'visual_timetable': return <VisualTimetableViewer data={data} language={lang} />
+      case 'comprehension':  return <ComprehensionViewer data={data} language={lang} />
+      case 'number_cards':   return <NumberCardsViewer data={data} language={lang} />
+      case 'reward_chart':   return <RewardChartViewer data={data} language={lang} />
+      case 'word_wall':      return <WordWallViewer data={data} language={lang} />
+      case 'matching_game':  return <MatchingGameViewer data={data} language={lang} />
       default: return <pre className="text-xs text-gray-600 whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre>
     }
   }

@@ -108,20 +108,34 @@ Verified end-to-end: "a 3-word sentence builder about snack time" → router pic
 sentence_builder + linked the words-to-phrases goal → correct Fitzgerald colours → all
 10 concepts resolved from ARASAAC.
 
-**Phase B — DONE (2026-07-16, core):** `aac_symbols` migration (RLS: authenticated
-read, service-role-only writes) + `resolve-symbols` Edge Function v2 deployed.
-Resolution: cache → ARASAAC (top-3 candidates ranked exact-keyword > all-tokens-in-
-keyword > search order, each vision-QA'd for SEMANTIC match before caching — keyword
-search alone returned a CAR WASH for "wash hands", and one wrong cached symbol would
-poison every material) → Imagen+QA fallback. Still open from Phase B: switching
-flashcards + Child Zone cards to concept-keyed symbols, and backfilling story_images
-card symbols into the library.
+**Phase B — DONE (2026-07-16, including tail):** `aac_symbols` migration (RLS:
+authenticated read, service-role-only writes) + `resolve-symbols` Edge Function v2
+deployed. Resolution: cache → ARASAAC (top-3 candidates ranked exact-keyword >
+all-tokens-in-keyword > search order, each vision-QA'd for SEMANTIC match before
+caching — keyword search alone returned a CAR WASH for "wash hands", and one wrong
+cached symbol would poison every material) → Imagen+QA fallback (proven live: "squeeze
+toy" had no ARASAAC match and generated a QA-passed Widgit-style pictogram). Tail done
+same day: flashcard_set template + Child Zone cards now emit `concept` per card and
+fire resolve-symbols (from /api/content and /api/child-zone-cards respectively — the
+per-content generate-card-images pipeline is no longer called for new sets); flashcard
+viewer/print and the Child Zone game render library symbols with emoji fallback.
+story_images backfill was made unnecessary instead of executed: pre-upgrade Child Zone
+sets keep reading their old per-index story_images until the goal set changes, at which
+point regeneration produces concept-keyed cards.
 
-**Phase C:** remaining types (comprehension, number_cards, reward_chart, word_wall,
-matching_game) — mechanical once A+B exist.
+**Phase C — DONE (2026-07-16):** all 5 remaining types live end-to-end (template +
+schema + router entry + viewer + print in the same files as Phase A): comprehension
+(symbol story + errorless picture-choice questions, answer key on print), number_cards
+(numeral + count× repeated symbol of ONE interest-drawn thing), reward_chart
+(interactive token board on screen; print has cut-out tokens + dashed circles; reward
+symbol personalised via Imagen when needed), word_wall (grouped by Fitzgerald class),
+matching_game (picture↔picture / picture↔word, two cut-out grids, second grid
+reordered). /api/aac-studio also gained retry-with-backoff on transient Anthropic
+429/5xx/529 (hit a real 529 during testing).
 
-**Phase D:** polish — board size options, orientation, Norwegian keyword search (ARASAAC
-is multilingual; NO symbols come free), batch printing.
+**Phase D (remaining):** polish — board size options, orientation, Norwegian keyword
+search (ARASAAC is multilingual; NO symbols come free; aac_symbols and resolve-symbols
+are already language-keyed so this is mostly prompt/UI work), batch printing.
 
 ## 7. Explicitly out of scope (for now)
 

@@ -21,10 +21,11 @@ const CARDS_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['emoji', 'word', 'sound', 'word_class', 'colour', 'symbol_description', 'goal_link'],
+        required: ['emoji', 'word', 'concept', 'sound', 'word_class', 'colour', 'symbol_description', 'goal_link'],
         properties: {
           emoji: { type: 'string', description: 'Exactly one widely-supported emoji' },
           word: { type: 'string', description: "At the child's language level, in their language" },
+          concept: { type: 'string', description: 'Lowercase dictionary-form searchable keyword for the shared AAC symbol library' },
           sound: { type: 'string', description: 'Playful phrase the parent says aloud' },
           word_class: { type: 'string', enum: ['person', 'action', 'describing', 'thing', 'social', 'question'], description: 'Fitzgerald Key word class' },
           colour: { type: 'string', description: 'Hex matching the Fitzgerald Key class exactly' },
@@ -140,15 +141,19 @@ ${JSON.stringify(goals)}
     contentId = (inserted?.id as string) || null
   }
 
-  // AAC symbol images (Widgit/Boardmaker style) generate in the background on Supabase —
-  // the Edge Function ACKs immediately and works via waitUntil. Emoji is the fallback
-  // until images land, so this never blocks the child.
-  if (contentId && process.env.WEEKLY_FOCUS_CRON_SECRET) {
-    fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-card-images`, {
+  // AAC symbol images resolve in the background on Supabase via the shared per-CONCEPT
+  // library (resolve-symbols: ARASAAC first, Imagen fallback) — generated once, reused
+  // by every material. Emoji is the fallback until symbols land, so this never blocks
+  // the child. (Replaced the per-content generate-card-images pipeline, 2026-07-16.)
+  const concepts = (generated.cards as { concept?: string; symbol_description?: string }[] | undefined)
+    ?.filter(c => c.concept)
+    .map(c => ({ concept: c.concept, symbol_description: c.symbol_description, language: (child.language as string) || 'en' })) || []
+  if (concepts.length && process.env.WEEKLY_FOCUS_CRON_SECRET) {
+    fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/resolve-symbols`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-cron-secret': process.env.WEEKLY_FOCUS_CRON_SECRET },
-      body: JSON.stringify({ content_id: contentId }),
-    }).catch(err => console.error('card image trigger failed:', err))
+      body: JSON.stringify({ concepts }),
+    }).catch(err => console.error('resolve-symbols trigger failed:', err))
   }
 
   return NextResponse.json({ cards: generated, contentId })

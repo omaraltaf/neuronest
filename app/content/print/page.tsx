@@ -2,7 +2,11 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CommBoardPrint, SentenceBuilderPrint, VisualTimetablePrint } from '../aacViewers'
+import {
+  CommBoardPrint, SentenceBuilderPrint, VisualTimetablePrint,
+  ComprehensionPrint, NumberCardsPrint, RewardChartPrint, WordWallPrint, MatchingGamePrint,
+  useAacSymbols, ArasaacAttribution,
+} from '../aacViewers'
 
 function PrintContent() {
   const params = useSearchParams()
@@ -28,12 +32,17 @@ function PrintContent() {
     switch (type) {
       case 'social_story': return <SocialStoryPrint data={data} title={item.title as string} />
       case 'activity_pack': return <ActivityPackPrint data={data} title={item.title as string} />
-      case 'flashcard_set': return <FlashcardPrint data={data} title={item.title as string} />
+      case 'flashcard_set': return <FlashcardPrint data={data} title={item.title as string} language={lang} />
       case 'sensory_card': return <SensoryPrint data={data} title={item.title as string} />
       case 'role_play': return <RolePlayPrint data={data} title={item.title as string} />
       case 'comm_board': return <CommBoardPrint data={data} title={item.title as string} language={lang} />
       case 'sentence_builder': return <SentenceBuilderPrint data={data} title={item.title as string} language={lang} />
       case 'visual_timetable': return <VisualTimetablePrint data={data} title={item.title as string} language={lang} />
+      case 'comprehension': return <ComprehensionPrint data={data} title={item.title as string} language={lang} />
+      case 'number_cards': return <NumberCardsPrint data={data} title={item.title as string} language={lang} />
+      case 'reward_chart': return <RewardChartPrint data={data} title={item.title as string} language={lang} />
+      case 'word_wall': return <WordWallPrint data={data} title={item.title as string} language={lang} />
+      case 'matching_game': return <MatchingGamePrint data={data} title={item.title as string} language={lang} />
       default: return <div className="p-8 text-gray-600">{JSON.stringify(data, null, 2)}</div>
     }
   }
@@ -209,9 +218,11 @@ function ActivityPackPrint({ data, title }: { data: Record<string, unknown>; tit
   )
 }
 
-function FlashcardPrint({ data, title }: { data: Record<string, unknown>; title: string }) {
+function FlashcardPrint({ data, title, language = 'en' }: { data: Record<string, unknown>; title: string; language?: string }) {
   const cards = (data.cards as Record<string, unknown>[]) || []
   const colour = (data.theme_colour as string) || '#7C3AED'
+  // Real AAC symbols from the shared concept library; emoji for pre-upgrade sets
+  const symbols = useAacSymbols(cards.map(c => (c.concept as string) || ''), language)
 
   return (
     <div className="px-8 py-6">
@@ -223,14 +234,24 @@ function FlashcardPrint({ data, title }: { data: Record<string, unknown>; title:
 
       {/* Print cards in a 2x4 grid - cut-out ready */}
       <div className="grid grid-cols-2 gap-4">
-        {cards.map((card, i) => (
+        {cards.map((card, i) => {
+          const symbol = symbols[((card.concept as string) || '').toLowerCase()]
+          return (
           <div key={i} className="rounded-2xl overflow-hidden border-4 border-gray-200"
             style={{ borderColor: card.colour as string || colour }}>
-            {/* Big emoji area */}
-            <div className="flex items-center justify-center py-6"
-              style={{ background: card.colour as string || colour }}>
-              <span style={{ fontSize: '80px', lineHeight: 1 }}>{card.big_emoji as string}</span>
-            </div>
+            {/* Symbol (white panel, real AAC card convention) or big emoji */}
+            {symbol ? (
+              <div className="flex items-center justify-center py-4 bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={symbol.url} alt={card.word as string}
+                  style={{ width: 110, height: 110, objectFit: 'contain' }} />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-6"
+                style={{ background: card.colour as string || colour }}>
+                <span style={{ fontSize: '80px', lineHeight: 1 }}>{card.big_emoji as string}</span>
+              </div>
+            )}
             {/* Word */}
             <div className="bg-white py-3 px-4 text-center">
               <div className="font-black text-2xl text-gray-900">{card.word as string}</div>
@@ -242,9 +263,11 @@ function FlashcardPrint({ data, title }: { data: Record<string, unknown>; title:
               )}
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
+      <ArasaacAttribution symbols={symbols} />
       <div className="mt-4 text-xs text-gray-400 text-center no-print">
         Tip: Print on card stock and laminate for durability
       </div>
