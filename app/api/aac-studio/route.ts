@@ -22,8 +22,13 @@ type RouterDecision = {
   rows: number
   cols: number
   period: string
+  mentioned_items: string[]
+  needs_clarification: boolean
+  clarifying_question: string
   reason: string
 }
+
+type ClarificationAnswer = { question: string; answer: string }
 
 async function callClaude(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -57,10 +62,11 @@ function fireResolveSymbols(materialType: string, content: Record<string, unknow
 }
 
 export async function POST(req: NextRequest) {
-  const { prompt, materialType, child, goals, goal, topic, language, action, feedback, currentContent } = await req.json()
+  const { prompt, materialType, child, goals, goal, topic, language, action, feedback, currentContent, clarificationAnswers } = await req.json()
   if (!child) return NextResponse.json({ error: 'child required' }, { status: 400 })
   const lang = language || (child.language as string) || 'en'
   const activeGoals = (goals || []) as Record<string, unknown>[]
+  const answers = (clarificationAnswers || []) as ClarificationAnswer[]
 
   try {
     const model = await resolveModel('standard')
@@ -86,9 +92,19 @@ Revise the material based on their feedback. Keep everything personalised to ${c
         output_config: { format: { type: 'json_schema', schema: AAC_TYPES[materialType].schema } },
       })
       const content = JSON.parse(textOf(revRes)) as Record<string, unknown>
+      // The schema can't emit parent_request — carry the original ask across revisions
+      if ((currentContent as Record<string, unknown>).parent_request) {
+        content.parent_request = (currentContent as Record<string, unknown>).parent_request
+      }
       fireResolveSymbols(materialType, content, lang)
       return NextResponse.json({ material_type: materialType, content })
     }
+
+    // The parent's own words travel to the generator verbatim — the router's short
+    // `topic` alone would drop every example they named
+    const parentRequest = prompt?.trim()
+      ? `"${prompt.trim()}"${answers.map(a => `\n[Emma asked] ${a.question}\n[Parent] ${a.answer}`).join('')}`
+      : ''
 
     // 1) Route free text to a material type (unless the caller already picked one)
     let decision: RouterDecision
@@ -97,7 +113,9 @@ Revise the material based on their feedback. Keep everything personalised to ${c
         material_type: materialType,
         topic: topic || (goal?.label as string) || '',
         goal_id: (goal?.id as string) || '',
-        target_length: 0, rows: 0, cols: 0, period: '', reason: 'manual selection',
+        target_length: 0, rows: 0, cols: 0, period: '',
+        mentioned_items: [], needs_clarification: false, clarifying_question: '',
+        reason: 'manual selection',
       }
     } else {
       if (!prompt?.trim()) return NextResponse.json({ error: 'prompt required' }, { status: 400 })
@@ -109,6 +127,9 @@ Revise the material based on their feedback. Keep everything personalised to ${c
         messages: [{
           role: 'user',
           content: `PARENT'S REQUEST: "${prompt.trim()}"
+${answers.length ? `
+--- CLARIFICATION ANSWERS (you asked, the parent answered — do not ask again) ---
+${answers.map(a => `Q: ${a.question}\nA: ${a.answer}`).join('\n')}` : ''}
 
 --- CHILD ---
 ${JSON.stringify({ name: child.name, interests: child.interests, language: lang })}
@@ -122,6 +143,13 @@ ${JSON.stringify(activeGoals.map(g => ({ id: g.id, label: g.label, area: g.area,
         output_config: { format: { type: 'json_schema', schema: AAC_ROUTER_SCHEMA } },
       })
       decision = JSON.parse(textOf(routerRes))
+
+      // Emma needs one answer before this material is worth making — hand the question
+      // back instead of guessing. One round max: with answers present the router is
+      // instructed to decide, and we don't re-ask even if it tries.
+      if (decision.needs_clarification && decision.clarifying_question && !answers.length) {
+        return NextResponse.json({ clarify: decision.clarifying_question })
+      }
     }
 
     const linkedGoal = activeGoals.find(g => g.id === decision.goal_id) || goal || null
@@ -147,11 +175,16 @@ ${JSON.stringify(activeGoals.map(g => ({ id: g.id, label: g.label, area: g.area,
             rows: decision.rows || undefined,
             cols: decision.cols || undefined,
             period: decision.period || undefined,
+            parentRequest: parentRequest || undefined,
+            mentionedItems: decision.mentioned_items?.length ? decision.mentioned_items : undefined,
           }),
         }],
         output_config: { format: { type: 'json_schema', schema: aacType.schema } },
       })
       content = JSON.parse(textOf(genRes))
+      // Keep the parent's original ask with the material — shown in the viewer and
+      // available to the revise loop (structured output can't emit it, so attach here)
+      if (prompt?.trim()) content.parent_request = prompt.trim()
 
       // 3) Fire the symbol engine — concept-keyed, ACKs instantly, resolves in the
       // background on Supabase (ARASAAC → Imagen). Emoji renders until symbols land.
@@ -174,7 +207,10 @@ Name: ${child.name}
 Interests: ${((child.interests as string[]) || []).join(', ') || 'not specified'}
 Language: ${lang}
 ${decision.topic ? `TOPIC (from the parent's own request): ${decision.topic}` : ''}
-
+${parentRequest ? `
+THE PARENT'S OWN REQUEST (verbatim — their specifics override your generic choices):
+${parentRequest}
+${decision.mentioned_items?.length ? `HARD RULE: the parent explicitly named ${decision.mentioned_items.map(i => `"${i}"`).join(', ')}. EVERY one of these MUST appear in the content, then add naturally related material to complete it well.` : ''}` : ''}
 ${VISUAL_INSTRUCTION}
 
 Make this genuinely personalised to ${child.name}.
@@ -183,6 +219,7 @@ Return ONLY valid JSON — no markdown, no explanation.`,
       })
       const raw = textOf(genRes).replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
       content = JSON.parse(raw)
+      if (prompt?.trim()) content.parent_request = prompt.trim()
     }
 
     return NextResponse.json({

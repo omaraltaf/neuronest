@@ -736,6 +736,9 @@ function ContentContent() {
   const [showGenerate, setShowGenerate] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [promptText, setPromptText] = useState('')
+  // Emma's one clarifying question before making the material (null = none pending)
+  const [clarify, setClarify] = useState<string | null>(null)
+  const [clarifyAnswer, setClarifyAnswer] = useState('')
   const [revising, setRevising] = useState(false)
   const [viewing, setViewing] = useState<Record<string, unknown> | null>(null)
   const [filterType, setFilterType] = useState<string | null>(null)
@@ -819,22 +822,32 @@ function ContentContent() {
   }
 
   // The AAC Studio front door: parent describes what they need in one sentence,
-  // Emma routes it to the right material type and generates it
-  const handlePromptGenerate = async () => {
+  // Emma routes it to the right material type and generates it. Emma may hand back one
+  // clarifying question first; the answer goes with the (still editable) original ask.
+  // The prompt stays in the box after generation so the parent can tweak and re-make.
+  const handlePromptGenerate = async (answers?: { question: string; answer: string }[]) => {
     if (!child || !promptText.trim()) return
     setGenerating(true)
     try {
       const res = await fetch('/api/aac-studio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: promptText.trim(), child, goals, language: child.language || 'en' }),
+        body: JSON.stringify({
+          prompt: promptText.trim(), child, goals,
+          language: child.language || 'en',
+          clarificationAnswers: answers || [],
+        }),
       })
       const json = await res.json()
-      if (json.content && json.material_type) {
+      if (json.clarify) {
+        setClarify(json.clarify)
+        setClarifyAnswer('')
+      } else if (json.content && json.material_type) {
         const cfg = CONTENT_TYPES.find(t => t.id === json.material_type)
         await saveAndOpen(json.material_type, json.content, json.goal_id || null,
           cfg?.label || 'Material')
-        setPromptText('')
+        setClarify(null)
+        setClarifyAnswer('')
       }
     } catch (e) {
       console.error('prompt generation failed:', e)
@@ -990,16 +1003,36 @@ function ContentContent() {
                 e.g. &ldquo;a choice board for snack time&rdquo; · &ldquo;a 3-word sentence builder about mealtimes&rdquo; · &ldquo;a morning timetable for school days&rdquo;
               </div>
               <div className="flex gap-2">
-                <input value={promptText} onChange={e => setPromptText(e.target.value)}
+                <input value={promptText}
+                  onChange={e => { setPromptText(e.target.value); if (clarify) { setClarify(null); setClarifyAnswer('') } }}
                   onKeyDown={e => { if (e.key === 'Enter') handlePromptGenerate() }}
                   placeholder={`What does ${child.name as string} need?`}
                   className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-violet-400 transition min-h-[44px]" />
-                <button onClick={handlePromptGenerate}
+                <button onClick={() => handlePromptGenerate()}
                   disabled={!promptText.trim()}
                   className="px-4 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-black rounded-xl text-sm transition min-h-[44px] flex-shrink-0">
                   Make it →
                 </button>
               </div>
+
+              {/* Emma asked one question back — the original request above stays editable
+                  (editing it withdraws the question) */}
+              {clarify && (
+                <div className="mt-3 bg-violet-50 border border-violet-100 rounded-xl p-3">
+                  <div className="text-xs font-bold text-violet-700 mb-2">💬 Emma asks: {clarify}</div>
+                  <div className="flex gap-2">
+                    <input value={clarifyAnswer} onChange={e => setClarifyAnswer(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && clarifyAnswer.trim()) handlePromptGenerate([{ question: clarify, answer: clarifyAnswer.trim() }]) }}
+                      placeholder="One sentence is enough…" autoFocus
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-violet-200 bg-white text-sm focus:outline-none focus:border-violet-400 transition min-h-[44px]" />
+                    <button onClick={() => handlePromptGenerate([{ question: clarify, answer: clarifyAnswer.trim() }])}
+                      disabled={!clarifyAnswer.trim()}
+                      className="px-4 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-black rounded-xl text-sm transition min-h-[44px] flex-shrink-0">
+                      Answer →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

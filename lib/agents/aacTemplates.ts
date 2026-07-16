@@ -48,13 +48,20 @@ RULES:
 - rows/cols (comm_board only, else 0): grid size from 2x2 (early choices) to 5x4 (topic board). Fewer, larger cells for earlier communicators.
 - period (visual_timetable only, else ""): e.g. "morning", "school day", "bedtime".
 - If the request is ambiguous between two types, pick the one that gives the child the most active communication role.
+- mentioned_items: list EVERY specific word, item, activity, person, or example the parent explicitly named ("with juice, milk and water" → ["juice","milk","water"]; "wake up, breakfast, bus" → those three). Empty array if none. These are promises to the parent — the generator must include all of them.
+
+CLARIFYING QUESTION (use sparingly — a tired parent should almost never be interrogated):
+- Set needs_clarification=true with ONE short, warm question ONLY when the request is missing something that would materially change the material and no sensible default exists (e.g. "a timetable" — for which part of the day? "a board" — for choosing what?). The question must be answerable in one sentence.
+- Never ask about anything the child's profile, goals, or the request itself already answers. Never ask about grid sizes, colours, or formatting — you decide those.
+- If the message includes CLARIFICATION ANSWERS (a previous question you asked, now answered), never ask again — decide with what you have.
+- When needs_clarification=true, still fill every other field with your best guess.
 
 Respond with a single JSON object matching the required schema.`
 
 export const AAC_ROUTER_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['material_type', 'topic', 'goal_id', 'target_length', 'rows', 'cols', 'period', 'reason'],
+  required: ['material_type', 'topic', 'goal_id', 'target_length', 'rows', 'cols', 'period', 'mentioned_items', 'needs_clarification', 'clarifying_question', 'reason'],
   properties: {
     material_type: {
       type: 'string',
@@ -66,6 +73,9 @@ export const AAC_ROUTER_SCHEMA = {
     rows: { type: 'integer', description: 'comm_board: grid rows; otherwise 0' },
     cols: { type: 'integer', description: 'comm_board: grid columns; otherwise 0' },
     period: { type: 'string', description: 'visual_timetable: e.g. morning, school day; otherwise empty string' },
+    mentioned_items: { type: 'array', items: { type: 'string' }, description: 'Every specific word/item/example the parent explicitly named; empty if none' },
+    needs_clarification: { type: 'boolean', description: 'true only when one answer would materially change the material and no sensible default exists' },
+    clarifying_question: { type: 'string', description: 'The one warm question to ask the parent, or empty string' },
     reason: { type: 'string', description: 'One sentence: why this type for this request' },
   },
 }
@@ -83,6 +93,8 @@ type Ctx = {
   rows?: number
   cols?: number
   period?: string
+  parentRequest?: string
+  mentionedItems?: string[]
 }
 
 const childBlock = (c: Ctx) => `
@@ -91,7 +103,10 @@ Name: ${c.child.name}
 Interests: ${((c.child.interests as string[]) || []).join(', ') || 'not specified'}
 Language: ${c.language}
 ${c.goal ? `GOAL THIS SUPPORTS: ${JSON.stringify({ label: c.goal.label, area: c.goal.area, approach: c.goal.approach, target_criterion: c.goal.target_criterion })}` : 'GOAL: none linked — build from the topic and the child\'s world.'}
-
+${c.parentRequest ? `
+THE PARENT'S OWN REQUEST (verbatim — their specifics override your generic choices):
+${c.parentRequest}
+${c.mentionedItems?.length ? `HARD RULE: the parent explicitly named ${c.mentionedItems.map(i => `"${i}"`).join(', ')}. EVERY one of these MUST appear in the material — they are promises to the parent. Then add naturally related items to complete it well.` : ''}` : ''}
 ${CONCEPT_RULES}
 
 ${FITZGERALD}

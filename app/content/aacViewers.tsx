@@ -93,6 +93,16 @@ export function ArasaacAttribution({ symbols }: { symbols: SymbolMap }) {
   )
 }
 
+// The parent's original ask, kept with the material (route attaches it as parent_request)
+function ParentRequest({ text }: { text?: unknown }) {
+  if (!text) return null
+  return (
+    <div className="text-[10px] text-gray-400 italic mt-1">
+      You asked: &ldquo;{text as string}&rdquo;
+    </div>
+  )
+}
+
 function HowToUse({ text }: { text?: unknown }) {
   if (!text) return null
   return (
@@ -120,6 +130,7 @@ export function CommBoardViewer({ data, language = 'en' }: { data: Record<string
       <div className="rounded-2xl p-4 text-center bg-violet-50 border border-violet-100">
         <div className="text-4xl mb-1">{data.board_emoji as string || '🗣️'}</div>
         <div className="font-black text-gray-900">{data.title as string}</div>
+        <ParentRequest text={data.parent_request} />
       </div>
       <HowToUse text={data.how_to_use} />
       <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
@@ -180,6 +191,7 @@ export function SentenceBuilderViewer({ data, language = 'en' }: { data: Record<
         <div className="text-4xl mb-1">{data.theme_emoji as string || '🧩'}</div>
         <div className="font-black text-gray-900">{data.title as string}</div>
         <div className="text-xs text-gray-500 mt-1">{data.target_length as number}-word sentences</div>
+        <ParentRequest text={data.parent_request} />
       </div>
       <HowToUse text={data.how_to_use} />
       {Array.isArray(data.frames) && (data.frames as string[]).length > 0 && (
@@ -264,6 +276,7 @@ export function VisualTimetableViewer({ data, language = 'en' }: { data: Record<
         <div className="text-4xl mb-1">{data.theme_emoji as string || '🕐'}</div>
         <div className="font-black text-gray-900">{data.title as string}</div>
         <div className="text-xs text-gray-500 mt-1">{data.period as string}</div>
+        <ParentRequest text={data.parent_request} />
       </div>
       <HowToUse text={data.how_to_use} />
       <div className="space-y-2">
