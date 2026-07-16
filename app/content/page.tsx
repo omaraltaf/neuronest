@@ -536,7 +536,7 @@ function RolePlayViewer({ data }: { data: Record<string, unknown> }) {
   )
 }
 
-function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, onGenerateImages, onRegenerateImages, revising }: {
+function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, onGenerateImages, onRegenerateImages, onEditRequest, revising }: {
   item: Record<string, unknown>
   onClose: () => void
   onRevise: (feedback: string) => void
@@ -544,6 +544,7 @@ function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, onGenerateI
   onPrint: () => void
   onGenerateImages: () => void
   onRegenerateImages: () => void
+  onEditRequest?: () => void
   revising: boolean
 }) {
   const [feedbackMode, setFeedbackMode] = useState(false)
@@ -612,6 +613,12 @@ function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, onGenerateI
           )}
           {!feedbackMode ? (
             <div className="flex gap-2">
+              {!!(data as Record<string, unknown>)?.parent_request && onEditRequest && (
+                <button onClick={onEditRequest}
+                  className="flex-1 py-2.5 border border-violet-200 text-violet-600 hover:bg-violet-50 font-bold rounded-xl text-sm transition">
+                  ✏️ Edit request
+                </button>
+              )}
               <button onClick={() => setFeedbackMode(true)}
                 className="flex-1 py-2.5 border border-violet-200 text-violet-600 hover:bg-violet-50 font-bold rounded-xl text-sm transition">
                 💬 Revise
@@ -1002,12 +1009,15 @@ function ContentContent() {
               <div className="text-xs text-gray-400 mb-3">
                 e.g. &ldquo;a choice board for snack time&rdquo; · &ldquo;a 3-word sentence builder about mealtimes&rdquo; · &ldquo;a morning timetable for school days&rdquo;
               </div>
-              <div className="flex gap-2">
-                <input value={promptText}
+              <div className="flex gap-2 items-end">
+                <textarea value={promptText} rows={2}
                   onChange={e => { setPromptText(e.target.value); if (clarify) { setClarify(null); setClarifyAnswer('') } }}
-                  onKeyDown={e => { if (e.key === 'Enter') handlePromptGenerate() }}
+                  onKeyDown={e => {
+                    // Enter submits, Shift+Enter makes a new line
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePromptGenerate() }
+                  }}
                   placeholder={`What does ${child.name as string} need?`}
-                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-violet-400 transition min-h-[44px]" />
+                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-violet-400 transition min-h-[44px]" />
                 <button onClick={() => handlePromptGenerate()}
                   disabled={!promptText.trim()}
                   className="px-4 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-black rounded-xl text-sm transition min-h-[44px] flex-shrink-0">
@@ -1133,6 +1143,16 @@ function ContentContent() {
           onPrint={handlePrint}
           onGenerateImages={() => handleGenerateImages(false)}
           onRegenerateImages={() => handleGenerateImages(true)}
+          onEditRequest={() => {
+            // Put the original ask back in the front-door box for editing; making it
+            // again creates a new material (the parent can delete the old one)
+            const request = (viewing.content_data as Record<string, unknown>)?.parent_request as string
+            if (request) {
+              setPromptText(request)
+              setViewing(null)
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }
+          }}
           revising={revising} />
       )}
 

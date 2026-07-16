@@ -50,9 +50,10 @@ RULES:
 - If the request is ambiguous between two types, pick the one that gives the child the most active communication role.
 - mentioned_items: list EVERY specific word, item, activity, person, or example the parent explicitly named ("with juice, milk and water" → ["juice","milk","water"]; "wake up, breakfast, bus" → those three). Empty array if none. These are promises to the parent — the generator must include all of them.
 
-CLARIFYING QUESTION (use sparingly — a tired parent should almost never be interrogated):
-- Set needs_clarification=true with ONE short, warm question ONLY when the request is missing something that would materially change the material and no sensible default exists (e.g. "a timetable" — for which part of the day? "a board" — for choosing what?). The question must be answerable in one sentence.
-- Never ask about anything the child's profile, goals, or the request itself already answers. Never ask about grid sizes, colours, or formatting — you decide those.
+CLARIFYING QUESTION:
+- Set needs_clarification=true with ONE short, warm question whenever the request lacks the CONCRETE ANCHOR the material needs. The most common gap is the SITUATION: a skill or goal named without a situation ("telling others what she needs", "asking for help", "communication practice") is NOT enough to generate from — ask which everyday situation to build it around, offering 2-3 examples ("snack time, getting dressed, or play?"). Other gaps: "a timetable" → which part of the day; "a board" → choosing between what.
+- A generic material wastes the parent's print, laminating, and trust. When torn between guessing and asking, ASK.
+- Never ask about things you decide yourself (grid size, colours, formatting, material type) or that the child's profile, goals, or the request already answer. One question maximum, answerable in one sentence.
 - If the message includes CLARIFICATION ANSWERS (a previous question you asked, now answered), never ask again — decide with what you have.
 - When needs_clarification=true, still fill every other field with your best guess.
 
