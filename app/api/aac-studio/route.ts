@@ -22,6 +22,7 @@ type RouterDecision = {
   rows: number
   cols: number
   period: string
+  card_count: number
   mentioned_items: string[]
   needs_clarification: boolean
   clarifying_question: string
@@ -122,7 +123,7 @@ Revise the material based on their feedback. Keep everything personalised to ${c
         material_type: materialType,
         topic: topic || (goal?.label as string) || '',
         goal_id: (goal?.id as string) || '',
-        target_length: 0, rows: 0, cols: 0, period: '',
+        target_length: 0, rows: 0, cols: 0, period: '', card_count: 0,
         mentioned_items: [], needs_clarification: false, clarifying_question: '',
         reason: 'manual selection',
       }
@@ -199,13 +200,15 @@ ${JSON.stringify(activeGoals.map(g => ({ id: g.id, label: g.label, area: g.area,
       // background on Supabase (ARASAAC → Imagen). Emoji renders until symbols land.
       fireResolveSymbols(decision.material_type, content, lang)
     } else {
-      // Classic type routed from the free-text box — same generation as /api/content
+      // Classic type routed from the free-text box — same generation as /api/content.
+      // 8000 tokens: a 16-card flashcard set with all per-card fields overflows 3000
+      // and truncates mid-JSON (found live 2026-07-16).
       const typePromptFn = TYPE_PROMPTS[decision.material_type] || TYPE_PROMPTS.activity_pack
       const goalish = linkedGoal || { label: decision.topic }
       const genRes = await callClaude({
         model,
         thinking: { type: 'disabled' },
-        max_tokens: 3000,
+        max_tokens: 8000,
         system: CONTENT_AGENT_PROMPT,
         messages: [{
           role: 'user',
@@ -216,6 +219,7 @@ Name: ${child.name}
 Interests: ${((child.interests as string[]) || []).join(', ') || 'not specified'}
 Language: ${lang}
 ${decision.topic ? `TOPIC (from the parent's own request): ${decision.topic}` : ''}
+${decision.card_count ? `CARD COUNT: create exactly ${decision.card_count} cards.` : ''}
 ${parentRequest ? `
 THE PARENT'S OWN REQUEST (verbatim — their specifics override your generic choices):
 ${parentRequest}

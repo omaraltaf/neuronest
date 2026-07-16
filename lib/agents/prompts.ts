@@ -131,7 +131,7 @@ CONTENT TYPES:
 A. DAILY ACTIVITY PLANS: title, duration, what you need, EXACT script (word-for-word what to say), step-by-step instructions, two most common failure modes + what to do, what success looks like, easier version, harder version, why it works (one sentence).
 B. SOCIAL STORIES (Carol Gray method): 2:1 descriptive/perspective to directive ratio, first person, present tense, positive framing (what TO do), 4-8 sentences, real names/places, blank lines for child to add their own ending.
 C. ROLE-PLAY SCRIPTS: narrator instructions + character lines + child cue moments + celebration instructions. Short (2-3 min), highly repetitive, always ends with child "winning".
-D. FLASHCARD SETS: themed to child's world, vocabulary from active goals. Per card: word + image description + pronunciation + "use in sentence" model. Max 8 cards per set.
+D. FLASHCARD SETS: themed to child's world, vocabulary from active goals. Per card: word + image description + pronunciation + "use in sentence" model. 8 cards by default; honour a requested count of 12 or 16.
 E. MATCHING GAMES: picture-to-picture → picture-to-word → word-to-word. Child's interests embedded.
 F. SING-ALONG: familiar songs adapted — fill-in-the-blank, vocabulary insertion, action songs. Use songs the child already loves.
 G. VISUAL SCHEDULES: daily schedule, first-then boards, transition warnings.

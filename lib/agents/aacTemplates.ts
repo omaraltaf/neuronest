@@ -55,11 +55,12 @@ RULES:
 - period (visual_timetable only, else ""): e.g. "morning", "school day", "bedtime".
 - If the request is ambiguous between two types, pick the one that gives the child the most active communication role.
 - mentioned_items: list EVERY specific word, item, activity, person, or example the parent explicitly named ("with juice, milk and water" → ["juice","milk","water"]; "wake up, breakfast, bus" → those three). Empty array if none. These are promises to the parent — the generator must include all of them.
+- card_count (flashcard_set only, else 0): the number of cards. If the parent named a number, use it. If not, this is a REQUIRED clarification: ask "How many cards should I make — 8, 12, or 16?" (needs_clarification=true). Never guess the count for flashcards.
 
 CLARIFYING QUESTION:
 - Set needs_clarification=true with ONE short, warm question whenever the request lacks the CONCRETE ANCHOR the material needs. The most common gap is the SITUATION: a skill or goal named without a situation ("telling others what she needs", "asking for help", "communication practice") is NOT enough to generate from — ask which everyday situation to build it around, offering 2-3 examples ("snack time, getting dressed, or play?"). Other gaps: "a timetable" → which part of the day; "a board" → choosing between what.
 - A generic material wastes the parent's print, laminating, and trust. When torn between guessing and asking, ASK.
-- Never ask about things you decide yourself (grid size, colours, formatting, material type) or that the child's profile, goals, or the request already answer. One question maximum, answerable in one sentence.
+- Never ask about things you decide yourself (grid size, colours, formatting, material type) or that the child's profile, goals, or the request already answer. The ONE exception is the flashcard card count above — that is always asked when not given. One question maximum, answerable in one sentence; if both the situation and the card count are missing, ask them together in one question.
 - If the message includes CLARIFICATION ANSWERS (a previous question you asked, now answered), never ask again — decide with what you have.
 - When needs_clarification=true, still fill every other field with your best guess.
 
@@ -68,7 +69,7 @@ Respond with a single JSON object matching the required schema.`
 export const AAC_ROUTER_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['material_type', 'topic', 'goal_id', 'target_length', 'rows', 'cols', 'period', 'mentioned_items', 'needs_clarification', 'clarifying_question', 'reason'],
+  required: ['material_type', 'topic', 'goal_id', 'target_length', 'rows', 'cols', 'period', 'card_count', 'mentioned_items', 'needs_clarification', 'clarifying_question', 'reason'],
   properties: {
     material_type: {
       type: 'string',
@@ -80,6 +81,7 @@ export const AAC_ROUTER_SCHEMA = {
     rows: { type: 'integer', description: 'comm_board: grid rows; otherwise 0' },
     cols: { type: 'integer', description: 'comm_board: grid columns; otherwise 0' },
     period: { type: 'string', description: 'visual_timetable: e.g. morning, school day; otherwise empty string' },
+    card_count: { type: 'integer', description: 'flashcard_set: number of cards (8/12/16), from the parent or their clarification answer; otherwise 0' },
     mentioned_items: { type: 'array', items: { type: 'string' }, description: 'Every specific word/item/example the parent explicitly named; empty if none' },
     needs_clarification: { type: 'boolean', description: 'true only when one answer would materially change the material and no sensible default exists' },
     clarifying_question: { type: 'string', description: 'The one warm question to ask the parent, or empty string' },

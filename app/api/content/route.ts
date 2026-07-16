@@ -65,7 +65,9 @@ Return ONLY valid JSON — no markdown, no explanation.`
       body: JSON.stringify({
         model: await resolveModel('standard'),
         thinking: { type: 'disabled' },
-        max_tokens: 3000,
+        // 8000: large sets (12-16 flashcards, or revisions of them) overflow 3000 and
+        // truncate mid-JSON
+        max_tokens: 8000,
         system: CONTENT_AGENT_PROMPT,
         messages: [{ role: 'user', content: prompt }],
       }),

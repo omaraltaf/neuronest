@@ -103,7 +103,9 @@ Goal: ${goal.label}
 Language level: ${(child as Record<string, unknown>).language_level || 'single words emerging'}
 Interests: ${(child.interests as string[] || []).join(', ') || 'general'}
 
-Create 8 flashcards. Make them visually engaging and embed ${child.name}'s interests where possible.
+Create 8 flashcards (unless a CARD COUNT override appears below). Make them visually engaging and embed ${child.name}'s interests where possible.
+
+TOPIC RELEVANCE (hard rule): when a topic or event is given, EVERY card must be plainly about it — a parent must look at each card and instantly see why it is in this set. No generic filler vocabulary. Core words (go, more, help) may earn a place ONLY when anchored to the topic in their model_sentence and prompts ("more marshmallows!" on a camping set) — never as free-floating padding.
 
 AAC STANDARDS (non-negotiable — these children often already use AAC/ASK symbols at school):
 - One concept per card, zero visual clutter.
