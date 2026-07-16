@@ -5,10 +5,14 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import TabBar from '@/components/TabBar'
+import { CommBoardViewer, SentenceBuilderViewer, VisualTimetableViewer } from './aacViewers'
 
 const CONTENT_TYPES = [
   { id: 'social_story',   icon: '📖', label: 'Social Story',     desc: 'Personalised story with emoji sentences' },
   { id: 'activity_pack',  icon: '🎯', label: 'Activity Pack',    desc: 'Visual step-by-step home activities' },
+  { id: 'comm_board',     icon: '🗣️', label: 'Communication Board', desc: 'Symbol grid for pointing and choosing' },
+  { id: 'sentence_builder', icon: '🧩', label: 'Sentence Builder', desc: 'Cut-out word strips to build sentences' },
+  { id: 'visual_timetable', icon: '🕐', label: 'Visual Timetable', desc: 'Symbol schedule for daily routines' },
   { id: 'flashcard_set',  icon: '🃏', label: 'Flashcard Set',    desc: 'Visual vocabulary cards with prompts' },
   { id: 'sensory_card',   icon: '🌀', label: 'Sensory Toolkit',  desc: 'Visual regulation strategies' },
   { id: 'role_play',      icon: '🎭', label: 'Role Play Script', desc: 'Visual scenario with cues' },
@@ -17,7 +21,11 @@ const CONTENT_TYPES = [
 const TYPE_COLORS: Record<string, string> = {
   social_story: '#5B7FE8', activity_pack: '#E8635A',
   flashcard_set: '#7C3AED', sensory_card: '#16A34A', role_play: '#D97706',
+  comm_board: '#0891B2', sentence_builder: '#059669', visual_timetable: '#B45309',
 }
+
+// AAC Studio types generate via /api/aac-studio (concept-keyed symbols); the rest via /api/content
+const AAC_STUDIO_TYPES = ['comm_board', 'sentence_builder', 'visual_timetable']
 
 // ── Visual Renderers ──────────────────────────────────────────────────────────
 
@@ -545,12 +553,16 @@ function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, onGenerateI
   const color = TYPE_COLORS[item.content_type as string] || '#7C3AED'
 
   const renderContent = () => {
+    const lang = (item.language as string) || 'en'
     switch (item.content_type) {
       case 'social_story':   return <SocialStoryViewer data={data} contentId={item.id as string} childId={(item as Record<string, unknown>).child_id as string} />
       case 'activity_pack':  return <ActivityPackViewer data={data} />
       case 'flashcard_set':  return <FlashcardViewer data={data} />
       case 'sensory_card':   return <SensoryViewer data={data} />
       case 'role_play':      return <RolePlayViewer data={data} />
+      case 'comm_board':     return <CommBoardViewer data={data} language={lang} />
+      case 'sentence_builder': return <SentenceBuilderViewer data={data} language={lang} />
+      case 'visual_timetable': return <VisualTimetableViewer data={data} language={lang} />
       default: return <pre className="text-xs text-gray-600 whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre>
     }
   }
@@ -723,6 +735,7 @@ function ContentContent() {
   const [focusGoalIds, setFocusGoalIds] = useState<string[]>([])
   const [showGenerate, setShowGenerate] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [promptText, setPromptText] = useState('')
   const [revising, setRevising] = useState(false)
   const [viewing, setViewing] = useState<Record<string, unknown> | null>(null)
   const [filterType, setFilterType] = useState<string | null>(null)
@@ -748,25 +761,14 @@ function ContentContent() {
     load()
   }, [childId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleGenerate = async (goalId: string, contentType: string) => {
-    if (!child) return
-    setGenerating(true)
-    const goal = goals.find(g => g.id === goalId)
+  // Save a generated piece and open it — shared by both generation paths
+  const saveAndOpen = async (contentType: string, content: Record<string, unknown>, goalId: string | null, fallbackTitle: string) => {
     const { data: { user } } = await supabase.auth.getUser()
-
-    const res = await fetch('/api/content', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ goal, child, contentType, language: child.language || 'en', action: 'generate' }),
-    })
-    const { content } = await res.json()
-
-    const cfg = CONTENT_TYPES.find(t => t.id === contentType)
     const { data: saved } = await supabase.from('generated_content').insert({
       child_id: childId, user_id: user!.id,
       goal_id: goalId, content_type: contentType,
-      title: content.title || `${cfg?.label} — ${(goal?.label as string || '').slice(0, 40)}`,
-      content_data: content, language: child.language as string || 'en',
+      title: (content.title as string) || fallbackTitle,
+      content_data: content, language: child?.language as string || 'en',
     }).select().single()
 
     if (saved) {
@@ -787,8 +789,57 @@ function ContentContent() {
         ).catch(e => console.error('Edge fn error:', e))
       }
     }
+    return saved
+  }
+
+  const handleGenerate = async (goalId: string, contentType: string) => {
+    if (!child) return
+    setGenerating(true)
+    const goal = goals.find(g => g.id === goalId)
+
+    // AAC Studio types (symbol-based) generate on their own route, which also fires
+    // the resolve-symbols Edge Function server-side; classic types use /api/content
+    const isAac = AAC_STUDIO_TYPES.includes(contentType)
+    const res = await fetch(isAac ? '/api/aac-studio' : '/api/content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(isAac
+        ? { materialType: contentType, goal, child, goals, language: child.language || 'en' }
+        : { goal, child, contentType, language: child.language || 'en', action: 'generate' }),
+    })
+    const { content } = await res.json()
+
+    if (content) {
+      const cfg = CONTENT_TYPES.find(t => t.id === contentType)
+      await saveAndOpen(contentType, content, goalId,
+        `${cfg?.label} — ${(goal?.label as string || '').slice(0, 40)}`)
+    }
     setGenerating(false)
     setShowGenerate(false)
+  }
+
+  // The AAC Studio front door: parent describes what they need in one sentence,
+  // Emma routes it to the right material type and generates it
+  const handlePromptGenerate = async () => {
+    if (!child || !promptText.trim()) return
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/aac-studio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: promptText.trim(), child, goals, language: child.language || 'en' }),
+      })
+      const json = await res.json()
+      if (json.content && json.material_type) {
+        const cfg = CONTENT_TYPES.find(t => t.id === json.material_type)
+        await saveAndOpen(json.material_type, json.content, json.goal_id || null,
+          cfg?.label || 'Material')
+        setPromptText('')
+      }
+    } catch (e) {
+      console.error('prompt generation failed:', e)
+    }
+    setGenerating(false)
   }
 
   const handleGenerateImages = async (regenerate = false) => {
@@ -825,13 +876,14 @@ function ContentContent() {
     if (!viewing || !child) return
     setRevising(true)
 
-    const res = await fetch('/api/content', {
+    const isAac = AAC_STUDIO_TYPES.includes(viewing.content_type as string)
+    const res = await fetch(isAac ? '/api/aac-studio' : '/api/content', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         goal: goals.find(g => g.id === viewing.goal_id),
         child,
-        contentType: viewing.content_type,
+        ...(isAac ? { materialType: viewing.content_type } : { contentType: viewing.content_type }),
         language: child.language || 'en',
         action: 'revise',
         feedback,
@@ -926,6 +978,28 @@ function ContentContent() {
             <div className="bg-violet-50 border border-violet-100 rounded-2xl p-4 flex items-center gap-3">
               <div className="flex gap-1"><div className="typing-dot"/><div className="typing-dot"/><div className="typing-dot"/></div>
               <div className="text-sm text-violet-700 font-medium">Emma is creating visual content for {child?.name as string}…</div>
+            </div>
+          )}
+
+          {/* AAC Studio front door — one sentence in, the right material out.
+              Emma picks the type; the parent never chooses from 8 template names. */}
+          {!generating && child && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <div className="text-sm font-black text-gray-900">Describe what you need</div>
+              <div className="text-xs text-gray-400 mb-3">
+                e.g. &ldquo;a choice board for snack time&rdquo; · &ldquo;a 3-word sentence builder about mealtimes&rdquo; · &ldquo;a morning timetable for school days&rdquo;
+              </div>
+              <div className="flex gap-2">
+                <input value={promptText} onChange={e => setPromptText(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handlePromptGenerate() }}
+                  placeholder={`What does ${child.name as string} need?`}
+                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-violet-400 transition min-h-[44px]" />
+                <button onClick={handlePromptGenerate}
+                  disabled={!promptText.trim()}
+                  className="px-4 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-black rounded-xl text-sm transition min-h-[44px] flex-shrink-0">
+                  Make it →
+                </button>
+              </div>
             </div>
           )}
 

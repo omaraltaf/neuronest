@@ -97,15 +97,25 @@ footer on every page. (PDF export = browser print-to-PDF, as today.)
 
 ## 6. Phasing (with the hard dependency called out)
 
-**Phase A — needs nothing (Vercel-only):** prompt router + first 3 template generators
-(comm_board, sentence_builder, visual_timetable) writing generated_content JSON; library
-cards + viewer + print layouts; symbols resolved per-content via the EXISTING
-generate-card-images pipeline (content-scoped cache) so it works end-to-end immediately.
+**Phase A — DONE (2026-07-16):** prompt router (`AAC_ROUTER_PROMPT`) + 3 template
+generators in `lib/agents/aacTemplates.ts`, served by `/api/aac-studio` (route also
+handles schema-enforced revision and fires resolve-symbols server-side — it holds the
+cron secret). "Describe what you need" box at the top of Materials; the 3 types are in
+the manual picker, viewer (`app/content/aacViewers.tsx` — separate file so the fragile
+page.tsx edits stayed surgical), and print route. Because Phase B landed the same day,
+Phase A shipped concept-keyed from the start — the content-scoped interim never existed.
+Verified end-to-end: "a 3-word sentence builder about snack time" → router picked
+sentence_builder + linked the words-to-phrases goal → correct Fitzgerald colours → all
+10 concepts resolved from ARASAAC.
 
-**Phase B — needs Supabase connector (BLOCKED until it reconnects):** `aac_symbols`
-migration + `resolve-symbols` Edge Function with ARASAAC-first sourcing; switch all
-material types (incl. flashcards + Child Zone cards) to concept-keyed symbols; backfill
-existing story_images card symbols into the library.
+**Phase B — DONE (2026-07-16, core):** `aac_symbols` migration (RLS: authenticated
+read, service-role-only writes) + `resolve-symbols` Edge Function v2 deployed.
+Resolution: cache → ARASAAC (top-3 candidates ranked exact-keyword > all-tokens-in-
+keyword > search order, each vision-QA'd for SEMANTIC match before caching — keyword
+search alone returned a CAR WASH for "wash hands", and one wrong cached symbol would
+poison every material) → Imagen+QA fallback. Still open from Phase B: switching
+flashcards + Child Zone cards to concept-keyed symbols, and backfilling story_images
+card symbols into the library.
 
 **Phase C:** remaining types (comprehension, number_cards, reward_chart, word_wall,
 matching_game) — mechanical once A+B exist.

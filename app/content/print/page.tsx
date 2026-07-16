@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { CommBoardPrint, SentenceBuilderPrint, VisualTimetablePrint } from '../aacViewers'
 
 function PrintContent() {
   const params = useSearchParams()
@@ -23,12 +24,16 @@ function PrintContent() {
   const type = item.content_type as string
 
   const renderPrint = () => {
+    const lang = (item.language as string) || 'en'
     switch (type) {
       case 'social_story': return <SocialStoryPrint data={data} title={item.title as string} />
       case 'activity_pack': return <ActivityPackPrint data={data} title={item.title as string} />
       case 'flashcard_set': return <FlashcardPrint data={data} title={item.title as string} />
       case 'sensory_card': return <SensoryPrint data={data} title={item.title as string} />
       case 'role_play': return <RolePlayPrint data={data} title={item.title as string} />
+      case 'comm_board': return <CommBoardPrint data={data} title={item.title as string} language={lang} />
+      case 'sentence_builder': return <SentenceBuilderPrint data={data} title={item.title as string} language={lang} />
+      case 'visual_timetable': return <VisualTimetablePrint data={data} title={item.title as string} language={lang} />
       default: return <div className="p-8 text-gray-600">{JSON.stringify(data, null, 2)}</div>
     }
   }
