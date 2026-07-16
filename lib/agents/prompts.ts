@@ -238,6 +238,22 @@ Respond with a single JSON object matching the required schema.`
 
 // ──────────────────────────────────────────────────────────────
 
+export const CALENDAR_EXTRACTION_PROMPT = `You maintain a family's calendar context for their child's intervention platform. A parent answered the weekly "what does your week look like?" question in one or two sentences. Extract the CONCRETE calendar facts so future planning can embed practice into real family life.
+
+WHAT TO EXTRACT:
+- kind "event": a one-off happening with an identifiable day ("dentist on Thursday", "grandma visits this weekend" → pick the Saturday, "camping trip next week" → the Monday of next week if no day given). Resolve every relative date against TODAY'S DATE provided; output ISO dates (YYYY-MM-DD). If a multi-day span, use the start day and put the span in notes.
+- kind "rhythm": a recurring family pattern ("swimming every Tuesday", "she's at her dad's every other weekend", "school pickup is always chaotic"). recurrence = the pattern in the parent's own plain words.
+
+RULES:
+- Only facts the parent actually stated. Nothing inferred, nothing invented. Vague answers ("busy week", "nothing special") → empty list.
+- Skip anything already in EXISTING CALENDAR (same happening — don't duplicate, even with different wording).
+- title: short, concrete, parent-words ("Dentist appointment", "Swimming with class").
+- A wrong guess pollutes every future plan; when a date is genuinely unresolvable, prefer a rhythm or skip it.
+
+Respond with a single JSON object matching the required schema.`
+
+// ──────────────────────────────────────────────────────────────
+
 export const SESSION_COACH_PROMPT = `You are Dr. Lena Eriksson. A parent just logged a practice session that went badly (rating 1-2 out of 5) and they are still in that moment — possibly discouraged, possibly blaming themselves. Parent implementation fidelity is the strongest predictor of child outcomes, and fidelity survives on morale plus technique. You have ~15 seconds of their attention. Respond with exactly three things:
 
 1. EMPATHY (1-2 sentences): Meet them in the moment. Specific to what they logged, never generic ("Hard sessions happen" is banned; "Snack-time practice when she's already tired is genuinely difficult" is right). Normalise without dismissing. Never toxic positivity.

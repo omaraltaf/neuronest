@@ -54,7 +54,7 @@ YOUR CLINICAL FRAME (NDBI — Naturalistic Developmental Behavioral Intervention
 - Always positively framed, strengths-first, never pathologising. The parent reading this is tired and doing their best.
 
 FOLLOW THESE REASONING STEPS IN ORDER:
-1. READ THE DATA. What actually happened in the last 14 days? Count sessions, note ratings, read the check-in wins/challenges/recommendations, note which goals got attention and which were untouched. Note whether previous weekly focuses were acted on. Previous weekly focuses may contain week_ahead_answer — the parent's own words about their week: treat events named there as prime naturalistic embedding opportunities, follow up on how they went, and let recurring family rhythms shape this week's embeds. If there is little or no data, that is itself the finding — the focus becomes re-entry, made as small and winnable as possible.
+1. READ THE DATA. What actually happened in the last 14 days? Count sessions, note ratings, read the check-in wins/challenges/recommendations, note which goals got attention and which were untouched. Note whether previous weekly focuses were acted on. Previous weekly focuses may contain week_ahead_answer — the parent's own words about their week: treat events named there as prime naturalistic embedding opportunities, follow up on how they went, and let recurring family rhythms shape this week's embeds. THE FAMILY CALENDAR is the durable version of those answers: upcoming events this week are prime embedding and preparation opportunities (name them in embed_opportunities), events just past deserve a follow-up, and rhythms are the recurring slots practice should live inside ("swimming Tuesdays" → waiting-your-turn practice every Tuesday). If there is little or no data, that is itself the finding — the focus becomes re-entry, made as small and winnable as possible.
 2. FIND THE SIGNAL. Pick the single most important pattern: a win to build on (momentum beats remediation), a goal that's stalled, a technique the parent is struggling with (low ratings), or a gap (active goal with zero practice). Prefer building on what's working over fixing what isn't, unless something is clearly blocking progress. Separately: if low-rated sessions share a signature (same time of day, same goal, same struggle in the notes — including [Dr. Eriksson asked]/[Parent] exchanges), name that pattern explicitly in pattern_insight as a coaching insight, not raw data ("sessions after 5pm tend to be the hard ones — her regulation tank is empty by then"). If no genuine pattern exists, pattern_insight is an empty string. Never invent one.
 3. CHOOSE ONE FOCUS. One pivotal behavior, tied to 1-2 goals. Not a list. A parent who is told to focus on everything focuses on nothing. THE FOCUS IS A STEP INSIDE THE PLAN, NEVER A NEW DIRECTION: choose primary_goal_ids from the goals the family is working on NOW (status in_progress or emerging). Only when NO goal is in_progress/emerging may you choose from not_started goals — and then your focus IS getting started on exactly those. The parent must be able to look at their plan and see this week's focus sitting inside it.
 4. DESIGN THE WEEK. One 5-minute starter activity (doable tonight, with things already in the house, using the child's actual interests from their profile). 2-4 embed opportunities inside the family's existing routines. One concrete technique tip that coaches HOW the parent interacts (prompt level, wait time, following the child's lead, reinforcement timing) — not just WHAT to do.
@@ -179,6 +179,11 @@ async function planWeekForChild(childId: string, userId: string, currentWeek: nu
 
   const since = new Date(Date.now() - 14 * 86400000).toISOString()
 
+  // Housekeeping: events more than a week in the past stop feeding plans
+  await supabase.from('family_events').update({ active: false })
+    .eq('child_id', childId).eq('kind', 'event').eq('active', true)
+    .lt('event_date', new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10))
+
   const [
     { data: child },
     { data: profile },
@@ -188,6 +193,7 @@ async function planWeekForChild(childId: string, userId: string, currentWeek: nu
     { data: recentContent },
     { data: recentNotifs },
     { data: previousFocuses },
+    { data: familyEvents },
   ] = await Promise.all([
     supabase.from('children').select('id, name, dob, gender, interests, language, school_name').eq('id', childId).single(),
     supabase.from('child_profiles').select('profile_data, priority_matrix, strength_map, hypotheses').eq('child_id', childId).eq('is_current', true).maybeSingle(),
@@ -197,6 +203,7 @@ async function planWeekForChild(childId: string, userId: string, currentWeek: nu
     supabase.from('generated_content').select('goal_id, content_type, title, generated_at').eq('child_id', childId).order('generated_at', { ascending: false }).limit(15),
     supabase.from('notifications').select('type, title, read, created_at').eq('child_id', childId).gte('created_at', since),
     supabase.from('weekly_focus').select('week_start, focus_data').eq('child_id', childId).order('week_start', { ascending: false }).limit(3),
+    supabase.from('family_events').select('kind, title, event_date, recurrence, notes').eq('child_id', childId).eq('active', true).order('event_date', { ascending: true, nullsFirst: false }),
   ])
 
   const context = `
@@ -223,6 +230,9 @@ ${JSON.stringify(recentNotifs || [])}
 
 --- PREVIOUS WEEKLY FOCUSES (do not repeat; progress or pivot) ---
 ${JSON.stringify(previousFocuses || [])}
+
+--- FAMILY CALENDAR (events ahead + recurring rhythms — embed practice into these) ---
+${JSON.stringify(familyEvents || [])}
 
 --- WEEK ---
 This is programme week ${currentWeek}. The new week starts Monday ${weekStart}.

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveModel } from '@/lib/agents/models'
 import { createClient } from '@/lib/supabase/server'
-import { CONTENT_AGENT_PROMPT, CONTENT_ANTICIPATION_PROMPT } from '@/lib/agents/prompts'
+import { CONTENT_AGENT_PROMPT, CONTENT_ANTICIPATION_PROMPT, CALENDAR_EXTRACTION_PROMPT } from '@/lib/agents/prompts'
 import { TYPE_PROMPTS, VISUAL_INSTRUCTION } from '@/lib/agents/contentTemplates'
 
 // Weekly Planning Agent (CLAUDE.md §5.1). The reasoning runs in the Supabase Edge
@@ -63,6 +63,29 @@ export async function POST(req: NextRequest) {
 
   const data = await res.json().catch(() => ({}))
   return NextResponse.json({ ok: res.ok, ...data }, { status: res.ok ? 200 : 502 })
+}
+
+const CALENDAR_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['entries'],
+  properties: {
+    entries: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['kind', 'title', 'event_date', 'recurrence', 'notes'],
+        properties: {
+          kind: { type: 'string', enum: ['event', 'rhythm'] },
+          title: { type: 'string' },
+          event_date: { type: 'string', description: 'ISO date for events; empty string for rhythms' },
+          recurrence: { type: 'string', description: 'Plain-words pattern for rhythms; empty string for events' },
+          notes: { type: 'string', description: 'Extra detail worth keeping, or empty string' },
+        },
+      },
+    },
+  },
 }
 
 const DECISION_SCHEMA = {
@@ -133,11 +156,47 @@ export async function PATCH(req: NextRequest) {
   await supabase.from('weekly_focus').update({ focus_data: mergedData }).eq('id', focus.id)
 
   // §5.3: does the answer name a concrete event worth preparing for?
-  const [{ data: child }, { data: goals }] = await Promise.all([
+  const [{ data: child }, { data: goals }, { data: existingCalendar }] = await Promise.all([
     supabase.from('children').select('id, name, dob, interests, language, school_name').eq('id', childId).maybeSingle(),
     supabase.from('goals').select('id, label, area, status').eq('child_id', childId).in('status', ['not_started', 'in_progress', 'emerging']),
+    supabase.from('family_events').select('kind, title, event_date, recurrence')
+      .eq('child_id', childId).eq('active', true)
+      .or(`event_date.gte.${new Date().toISOString().slice(0, 10)},event_date.is.null`),
   ])
   if (!child) return NextResponse.json({ ok: true, saved: true, generated: null })
+
+  // Calendar extraction (roadmap #1): the answer's concrete facts become durable
+  // events/rhythms every future planning run reads — not just this Monday's
+  const calendarPromise = callClaude(CALENDAR_EXTRACTION_PROMPT, `
+TODAY'S DATE: ${new Date().toISOString().slice(0, 10)} (${new Date().toLocaleDateString('en-GB', { weekday: 'long' })})
+
+--- PARENT'S ANSWER ---
+"${answer.trim()}"
+
+--- EXISTING CALENDAR (do not duplicate) ---
+${JSON.stringify(existingCalendar || [])}
+`.trim(), { schema: CALENDAR_SCHEMA, maxTokens: 1000 })
+    .then(async (extracted) => {
+      const entries = (extracted?.entries || []) as { kind: string; title: string; event_date: string; recurrence: string; notes: string }[]
+      if (!entries.length) return
+      const rows = entries
+        .filter(e => e.title?.trim() && (e.kind === 'rhythm' || /^\d{4}-\d{2}-\d{2}$/.test(e.event_date)))
+        .map(e => ({
+          child_id: childId,
+          user_id: user.id,
+          kind: e.kind,
+          title: e.title.trim(),
+          event_date: e.kind === 'event' ? e.event_date : null,
+          recurrence: e.kind === 'rhythm' ? (e.recurrence || null) : null,
+          notes: e.notes?.trim() || null,
+          source: 'week_ahead',
+        }))
+      if (rows.length) {
+        const { error } = await supabase.from('family_events').insert(rows)
+        if (error) console.error('family_events insert:', error.message)
+      }
+    })
+    .catch(err => console.error('calendar extraction failed:', err))
 
   const decision = await callClaude(CONTENT_ANTICIPATION_PROMPT, `
 --- PARENT'S ANSWER TO "WHAT DOES YOUR WEEK LOOK LIKE?" ---
@@ -149,6 +208,8 @@ ${JSON.stringify(child)}
 --- ACTIVE GOALS ---
 ${JSON.stringify(goals || [])}
 `.trim(), { schema: DECISION_SCHEMA, maxTokens: 1000 })
+
+  await calendarPromise
 
   if (!decision?.should_generate || !decision.topic) {
     return NextResponse.json({ ok: true, saved: true, generated: null })

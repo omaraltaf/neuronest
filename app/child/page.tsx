@@ -70,6 +70,10 @@ function AboutChildContent() {
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null)
   const [profileDate, setProfileDate] = useState<string | null>(null)
   const [documents, setDocuments] = useState<Record<string, unknown>[]>([])
+  const [events, setEvents] = useState<Record<string, unknown>[]>([])
+  const [newEventTitle, setNewEventTitle] = useState('')
+  const [newEventDate, setNewEventDate] = useState('')
+  const [newEventRepeat, setNewEventRepeat] = useState('')
   const [openSection, setOpenSection] = useState<string | null>('snapshot')
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Record<string, string>>({})
@@ -79,16 +83,20 @@ function AboutChildContent() {
   useEffect(() => {
     if (!childId) return
     const load = async () => {
-      const [{ data: c }, { data: p }, { data: docs }] = await Promise.all([
+      const [{ data: c }, { data: p }, { data: docs }, { data: evts }] = await Promise.all([
         supabase.from('children').select('*').eq('id', childId).single(),
         supabase.from('child_profiles').select('profile_data, created_at')
           .eq('child_id', childId).eq('is_current', true).maybeSingle(),
         supabase.from('documents').select('id, file_name, doc_type, uploaded_at')
           .eq('child_id', childId).order('uploaded_at', { ascending: false }),
+        supabase.from('family_events').select('*')
+          .eq('child_id', childId).eq('active', true)
+          .order('event_date', { ascending: true, nullsFirst: false }),
       ])
       if (c) setChild(c)
       if (p) { setProfile(p.profile_data as Record<string, unknown>); setProfileDate(p.created_at as string) }
       setDocuments(docs || [])
+      setEvents(evts || [])
     }
     load()
   }, [childId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -110,6 +118,29 @@ function AboutChildContent() {
     if (data) setChild(data)
     setSaving(false)
     setEditing(false)
+  }
+
+  const addEvent = async () => {
+    if (!newEventTitle.trim() || (!newEventDate && !newEventRepeat.trim())) return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const kind = newEventDate ? 'event' : 'rhythm'
+    const { data } = await supabase.from('family_events').insert({
+      child_id: childId,
+      user_id: user.id,
+      kind,
+      title: newEventTitle.trim(),
+      event_date: newEventDate || null,
+      recurrence: kind === 'rhythm' ? newEventRepeat.trim() : null,
+      source: 'parent',
+    }).select().single()
+    if (data) setEvents(prev => [...prev, data])
+    setNewEventTitle(''); setNewEventDate(''); setNewEventRepeat('')
+  }
+
+  const removeEvent = async (id: string) => {
+    await supabase.from('family_events').delete().eq('id', id)
+    setEvents(prev => prev.filter(e => e.id !== id))
   }
 
   if (!child) {
@@ -263,6 +294,56 @@ function AboutChildContent() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Family calendar — events and rhythms the planning agents embed practice into.
+            Fills automatically from week-ahead answers; editable here. */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <div className="text-[10px] font-black text-gray-400 uppercase tracking-wide">Family calendar</div>
+          <div className="text-xs text-gray-400 mb-3">
+            Dr. Santos plans practice around these — trips, visitors, and the rhythms of your week. Your Monday answers land here automatically.
+          </div>
+
+          {events.length > 0 && (
+            <div className="space-y-1.5 mb-3">
+              {events.map(e => (
+                <div key={e.id as string} className="flex items-center gap-2.5 bg-gray-50 rounded-xl px-3 py-2.5">
+                  <span className="text-lg">{e.kind === 'rhythm' ? '🔁' : '📅'}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-gray-800">{e.title as string}</div>
+                    <div className="text-[10px] text-gray-400">
+                      {e.kind === 'rhythm'
+                        ? (e.recurrence as string) || 'recurring'
+                        : e.event_date ? new Date(e.event_date as string).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : ''}
+                      {e.source === 'week_ahead' ? ' · from your Monday answer' : ''}
+                    </div>
+                  </div>
+                  <button onClick={() => removeEvent(e.id as string)} aria-label="Remove"
+                    className="text-gray-300 hover:text-red-500 px-2 py-2 text-sm">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <input value={newEventTitle} onChange={e => setNewEventTitle(e.target.value)}
+              placeholder="e.g. Dentist appointment, Swimming with class…"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-violet-400 min-h-[44px]" />
+            <div className="flex gap-2">
+              <input type="date" value={newEventDate}
+                onChange={e => { setNewEventDate(e.target.value); if (e.target.value) setNewEventRepeat('') }}
+                className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 focus:outline-none focus:border-violet-400 min-h-[44px]" />
+              <input value={newEventRepeat}
+                onChange={e => { setNewEventRepeat(e.target.value); if (e.target.value) setNewEventDate('') }}
+                placeholder="or repeats: every Tuesday…"
+                className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-violet-400 min-h-[44px]" />
+              <button onClick={addEvent}
+                disabled={!newEventTitle.trim() || (!newEventDate && !newEventRepeat.trim())}
+                className="px-4 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-black rounded-xl text-sm min-h-[44px] flex-shrink-0">
+                Add
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Quick links */}
