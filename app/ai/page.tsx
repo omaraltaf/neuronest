@@ -136,8 +136,8 @@ function AIChatContent() {
     "She's not making progress on communication — why?",
   ]
 
-  const fmtDate = (ts: string) =>
-    new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const fmtDate = (ts?: string) =>
+    ts ? new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
