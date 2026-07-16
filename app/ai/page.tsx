@@ -5,6 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import TabBar from '@/components/TabBar'
 import type { ChatMessage } from '@/types'
 
+// Ask is a growing knowledge base, not a throwaway chat (field feedback 2026-07-13):
+// every exchange persists to agent_state (agent_type 'ai_chat'), history reloads on
+// open, and past questions & answers are searchable from the 🔍 in the header.
+
 const SYSTEM_PROMPT = `You are the NeuroNest AI assistant — a warm, knowledgeable companion for parents of children with ASD. You have access to this child's full profile, plan, and goals.
 
 You answer questions about:
@@ -21,33 +25,44 @@ Be specific to THIS child — always reference their name and what you know abou
 Be honest about limitations — if something requires a professional, say so clearly.
 Be warm, practical, and direct. Parents don't have time for vague answers.`
 
+const GREETING: ChatMessage = {
+  role: 'assistant',
+  content: "Hi! I'm here to help with any questions about your child's programme. What's on your mind?",
+  timestamp: new Date().toISOString(),
+}
+
+const MAX_SAVED_MESSAGES = 200
+
 function AIChatContent() {
   const params = useSearchParams()
   const childId = params.get('child') || ''
   const supabase = createClient()
 
-  const [messages, setMessages] = useState<ChatMessage[]>([{
-    role: 'assistant',
-    content: "Hi! I'm here to help with any questions about your child's programme. What's on your mind?",
-    timestamp: new Date().toISOString(),
-  }])
+  const [messages, setMessages] = useState<ChatMessage[]>([GREETING])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [childName, setChildName] = useState('')
   const [profileContext, setProfileContext] = useState('')
+  const [showSearch, setShowSearch] = useState(false)
+  const [search, setSearch] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  useEffect(() => {
+    if (!search) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, search])
 
   useEffect(() => {
     if (!childId) return
     const load = async () => {
-      const [{ data: child }, { data: profile }, { data: goals }] = await Promise.all([
+      const [{ data: child }, { data: profile }, { data: goals }, { data: savedChat }] = await Promise.all([
         supabase.from('children').select('name').eq('id', childId).single(),
         supabase.from('child_profiles').select('profile_data, priority_matrix').eq('child_id', childId).eq('is_current', true).maybeSingle(),
         supabase.from('goals').select('label, area, status').eq('child_id', childId),
+        supabase.from('agent_state').select('messages').eq('child_id', childId).eq('agent_type', 'ai_chat').maybeSingle(),
       ])
       if (child) setChildName(child.name)
+      const savedMessages = (savedChat?.messages || []) as ChatMessage[]
+      if (savedMessages.length > 0) setMessages(savedMessages)
       const ctx = [
         child ? `Child: ${child.name}` : '',
         profile?.profile_data ? `Profile snapshot: ${JSON.stringify(profile.profile_data).slice(0, 800)}` : '',
@@ -58,8 +73,20 @@ function AIChatContent() {
     load()
   }, [childId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const persist = async (msgs: ChatMessage[]) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('agent_state').upsert({
+      child_id: childId, user_id: user.id,
+      agent_type: 'ai_chat',
+      messages: msgs.slice(-MAX_SAVED_MESSAGES),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'child_id,agent_type' })
+  }
+
   const send = async () => {
     if (!input.trim() || loading) return
+    setShowSearch(false); setSearch('')
     const userMsg: ChatMessage = { role: 'user', content: input.trim(), timestamp: new Date().toISOString() }
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
@@ -81,8 +108,24 @@ function AIChatContent() {
       body: JSON.stringify({ messages: apiMessages, childContext: profileContext }),
     })
     const { text } = await aiRes.json()
-    setMessages(prev => [...prev, { role: 'assistant', content: text, timestamp: new Date().toISOString() }])
+    const finalMessages: ChatMessage[] = [...newMessages, { role: 'assistant', content: text, timestamp: new Date().toISOString() }]
+    setMessages(finalMessages)
     setLoading(false)
+    persist(finalMessages)
+  }
+
+  // Search: match Q&A pairs — a hit on either the question or the answer returns both
+  const query = search.trim().toLowerCase()
+  const matchedPairs: { q: ChatMessage; a: ChatMessage | null }[] = []
+  if (query) {
+    for (let i = 0; i < messages.length; i++) {
+      if (messages[i].role !== 'user') continue
+      const q = messages[i]
+      const a = messages[i + 1]?.role === 'assistant' ? messages[i + 1] : null
+      if (q.content.toLowerCase().includes(query) || (a && a.content.toLowerCase().includes(query))) {
+        matchedPairs.push({ q, a })
+      }
+    }
   }
 
   const QUICK_QUESTIONS = [
@@ -93,48 +136,89 @@ function AIChatContent() {
     "She's not making progress on communication — why?",
   ]
 
+  const fmtDate = (ts: string) =>
+    new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-100 flex-shrink-0">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">💬</div>
-          <div>
+          <div className="flex-1">
             <div className="font-black text-sm text-gray-900">Ask</div>
             <div className="text-xs text-gray-400">Any question about {childName || 'your child'}&apos;s programme</div>
           </div>
+          <button onClick={() => { setShowSearch(s => !s); setSearch('') }}
+            aria-label="Search past questions"
+            className={`w-11 h-11 flex items-center justify-center rounded-xl text-lg transition ${showSearch ? 'bg-violet-100' : 'hover:bg-gray-50'}`}>
+            🔍
+          </button>
         </div>
+        {showSearch && (
+          <div className="max-w-2xl mx-auto px-4 pb-3">
+            <input value={search} onChange={e => setSearch(e.target.value)} autoFocus
+              placeholder="Search your past questions and answers…"
+              className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition" />
+          </div>
+        )}
       </header>
 
       <div className="flex-1 overflow-y-auto max-w-2xl mx-auto w-full px-4 py-4 space-y-3">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.role === 'assistant' && (
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm flex-shrink-0 mt-1">🧠</div>
+        {query ? (
+          <>
+            <div className="text-xs text-gray-400 text-center">
+              {matchedPairs.length === 0
+                ? 'Nothing found — try a different word, or just ask below'
+                : `${matchedPairs.length} past conversation${matchedPairs.length > 1 ? 's' : ''} found`}
+            </div>
+            {matchedPairs.map((pair, i) => (
+              <div key={i} className="space-y-2">
+                <div className="text-xs text-gray-400 text-center pt-2">{fmtDate(pair.q.timestamp)}</div>
+                <div className="flex gap-2 justify-end">
+                  <div className="chat-user" style={{ whiteSpace: 'pre-wrap' }}>{pair.q.content}</div>
+                </div>
+                {pair.a && (
+                  <div className="flex gap-2 justify-start">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm flex-shrink-0 mt-1">🧠</div>
+                    <div className="chat-ai" style={{ whiteSpace: 'pre-wrap' }}>{pair.a.content}</div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {msg.role === 'assistant' && (
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm flex-shrink-0 mt-1">🧠</div>
+                )}
+                <div className={msg.role === 'user' ? 'chat-user' : 'chat-ai'} style={{ whiteSpace: 'pre-wrap' }}>
+                  {msg.content}
+                </div>
+              </div>
+            ))}
+            {loading && (
+              <div className="flex gap-2 justify-start">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">🧠</div>
+                <div className="chat-ai flex items-center gap-1.5 py-3">
+                  <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />
+                </div>
+              </div>
             )}
-            <div className={msg.role === 'user' ? 'chat-user' : 'chat-ai'} style={{ whiteSpace: 'pre-wrap' }}>
-              {msg.content}
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="flex gap-2 justify-start">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">🧠</div>
-            <div className="chat-ai flex items-center gap-1.5 py-3">
-              <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />
-            </div>
-          </div>
+            <div ref={bottomRef} />
+          </>
         )}
-        <div ref={bottomRef} />
       </div>
 
       {/* Quick questions */}
-      {messages.length <= 1 && (
+      {messages.length <= 1 && !query && (
         <div className="max-w-2xl mx-auto w-full px-4 pb-2">
-          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Common questions</div>
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Common questions</div>
           <div className="flex flex-wrap gap-1.5">
             {QUICK_QUESTIONS.map(q => (
               <button key={q} onClick={() => { setInput(q); }}
-                className="text-xs text-violet-600 bg-violet-50 border border-violet-100 hover:bg-violet-100 px-3 py-1.5 rounded-full transition">
+                className="text-sm text-violet-600 bg-violet-50 border border-violet-100 hover:bg-violet-100 px-3 py-2 rounded-full transition">
                 {q}
               </button>
             ))}
