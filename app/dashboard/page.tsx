@@ -7,9 +7,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Get children (query is user-scoped, so ?child= can only select the user's own)
+  // Get children — RLS scopes this to the user's own children PLUS any shared with
+  // them as an accepted guardian (child_guardians), so ?child= only reaches accessible ones
   const { data: children } = await supabase.from('children')
-    .select('*').eq('user_id', user.id).order('created_at', { ascending: true })
+    .select('*').order('created_at', { ascending: true })
 
   // No child yet → onboarding
   if (!children || children.length === 0) {

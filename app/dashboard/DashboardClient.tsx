@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import TabBar from '@/components/TabBar'
 import PracticeLogger from '@/components/PracticeLogger'
 
@@ -251,7 +250,6 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
   totalRecentLogs: number
 }) {
   const router = useRouter()
-  const supabase = createClient()
   const [notifications, setNotifications] = useState<Record<string, unknown>[]>([])
   const [showNotifs, setShowNotifs] = useState(false)
 
@@ -290,11 +288,6 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
   const winTypes = ['goal_achieved', 'streak', 'weekly_focus', 'content_ready']
   const wins = notifications.filter(n => winTypes.includes(n.type as string))
   const forYou = notifications.filter(n => !winTypes.includes(n.type as string))
-
-  const signOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
 
   const date = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
 
@@ -347,7 +340,10 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
                 </span>
               )}
             </button>
-            <button onClick={signOut} className="text-xs text-gray-400 hover:text-gray-600 transition py-3">Sign out</button>
+            <Link href="/account" aria-label="Account"
+              className="w-11 h-11 flex items-center justify-center text-gray-500 hover:text-violet-600 transition text-lg">
+              ⚙️
+            </Link>
           </div>
         </div>
 

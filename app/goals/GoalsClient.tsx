@@ -532,11 +532,20 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
               <span className="text-gray-300">›</span>
             </Link>
             <Link href={`/documents?child=${childId}`}
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition">
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 border-b border-gray-50 transition">
               <span className="text-xl">📄</span>
               <div className="flex-1">
                 <div className="text-sm font-semibold text-gray-800">Add documents</div>
                 <div className="text-xs text-gray-400">Upload assessments or reports to enrich {childName}&apos;s profile</div>
+              </div>
+              <span className="text-gray-300">›</span>
+            </Link>
+            <Link href={`/child?child=${childId}`}
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition">
+              <span className="text-xl">🧒</span>
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-gray-800">About {childName}</div>
+                <div className="text-xs text-gray-400">Details, confirmed profile, and all gathered documents</div>
               </div>
               <span className="text-gray-300">›</span>
             </Link>
