@@ -133,9 +133,16 @@ matching_game (picture↔picture / picture↔word, two cut-out grids, second gri
 reordered). /api/aac-studio also gained retry-with-backoff on transient Anthropic
 429/5xx/529 (hit a real 529 during testing).
 
-**Phase D (remaining):** polish — board size options, orientation, Norwegian keyword
-search (ARASAAC is multilingual; NO symbols come free; aac_symbols and resolve-symbols
-are already language-keyed so this is mostly prompt/UI work), batch printing.
+**Phase D — mostly DONE (2026-07-16):** batch printing (🖨️ select-mode in the library
+header → tap materials → one print job, `?ids=a,b,c` on the print route, one material
+per page via breakAfter); portrait/landscape toggle on the print toolbar (@page size);
+"Recommended for this week" now suggests the area-matched AAC type per working goal
+(communication → sentence strips, social → communication board, adaptive → visual
+timetable, sensory/behaviour → reward chart) ahead of the generic pack/flashcards.
+Board sizes need no extra UI — the router already honours sizes named in the prompt
+("a 4x4 board..."). Remaining: Norwegian keyword search — deferred with the rest of
+Norwegian support to product Phase 5 (CLAUDE.md §8); aac_symbols and resolve-symbols
+are already language-keyed, so it is mostly prompt/UI work when it comes.
 
 ## 7. Explicitly out of scope (for now)
 

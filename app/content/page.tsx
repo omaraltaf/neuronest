@@ -780,6 +780,9 @@ function ContentContent() {
   const [viewing, setViewing] = useState<Record<string, unknown> | null>(null)
   const [filterType, setFilterType] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // Batch printing: select several materials, print them as one job (one per page)
+  const [printSelect, setPrintSelect] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   useEffect(() => {
     if (!childId) return
@@ -985,10 +988,21 @@ function ContentContent() {
               <div className="font-black text-sm text-gray-900">Materials</div>
               <div className="text-xs text-gray-400">Emma — makes your materials</div>
             </div>
-            <button onClick={() => setShowGenerate(true)}
-              className="text-sm font-black px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl min-h-[44px]">
-              + Make something
-            </button>
+            <div className="flex items-center gap-2">
+              {contentItems.length > 1 && (
+                <button onClick={() => { setPrintSelect(p => !p); setSelectedIds([]) }}
+                  aria-label="Print several materials"
+                  className={`text-lg px-3 py-2.5 rounded-xl min-h-[44px] border transition ${
+                    printSelect ? 'bg-violet-600 border-violet-600' : 'border-gray-200 hover:bg-gray-50'
+                  }`}>
+                  🖨️
+                </button>
+              )}
+              <button onClick={() => setShowGenerate(true)}
+                className="text-sm font-black px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl min-h-[44px]">
+                + Make something
+              </button>
+            </div>
           </div>
           <div className="max-w-2xl mx-auto px-4 pb-2 flex gap-1 overflow-x-auto">
             <button onClick={() => setFilterType(null)}
@@ -1086,8 +1100,20 @@ function ContentContent() {
             ]
             const hasType = (goalId: string, type: string) =>
               contentItems.some(c => c.goal_id === goalId && c.content_type === type)
+            // Per goal: one area-matched AAC material first (the clinically obvious
+            // one), then the generic pack/flashcards — max 3 chips total
+            const areaType = (area: string): { type: string; icon: string; label: string } | null => {
+              if (area === 'communication') return { type: 'sentence_builder', icon: '🧩', label: 'Sentence strips' }
+              if (area === 'social') return { type: 'comm_board', icon: '🗣️', label: 'Communication board' }
+              if (area === 'adaptive') return { type: 'visual_timetable', icon: '🕐', label: 'Visual timetable' }
+              if (area === 'sensory' || area === 'behaviour') return { type: 'reward_chart', icon: '🏆', label: 'Reward chart' }
+              return null
+            }
             const recs: { goal: Record<string, unknown>; type: string; icon: string; label: string }[] = []
             for (const g of ordered) {
+              if (recs.length >= 3) break
+              const aac = areaType(g.area as string)
+              if (aac && !hasType(g.id as string, aac.type)) recs.push({ goal: g, ...aac })
               if (recs.length >= 3) break
               if (!hasType(g.id as string, 'activity_pack'))
                 recs.push({ goal: g, type: 'activity_pack', icon: '🎯', label: 'Activity pack' })
@@ -1132,9 +1158,15 @@ function ContentContent() {
           {filtered.map(item => {
             const cfg = CONTENT_TYPES.find(t => t.id === item.content_type)
             const color = TYPE_COLORS[item.content_type as string] || '#7C3AED'
+            const selected = selectedIds.includes(item.id as string)
             return (
-              <button key={item.id as string} onClick={() => setViewing(item)}
-                className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-left hover:border-violet-200 transition">
+              <button key={item.id as string}
+                onClick={() => printSelect
+                  ? setSelectedIds(ids => selected ? ids.filter(i => i !== item.id) : [...ids, item.id as string])
+                  : setViewing(item)}
+                className={`w-full bg-white rounded-2xl border shadow-sm p-4 text-left transition ${
+                  selected ? 'border-violet-400 bg-violet-50' : 'border-gray-100 hover:border-violet-200'
+                }`}>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
                     style={{ background: `${color}15` }}>
@@ -1147,12 +1179,42 @@ function ContentContent() {
                       {new Date(item.generated_at as string).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </div>
                   </div>
-                  <span className="text-gray-300 text-sm self-center">›</span>
+                  {printSelect ? (
+                    <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-black self-center flex-shrink-0 ${
+                      selected ? 'bg-violet-600 border-violet-600 text-white' : 'border-gray-300 text-transparent'
+                    }`}>✓</span>
+                  ) : (
+                    <span className="text-gray-300 text-sm self-center">›</span>
+                  )}
                 </div>
               </button>
             )
           })}
         </div>
+
+        {/* Batch print action bar */}
+        {printSelect && (
+          <div className="fixed bottom-20 left-0 right-0 z-20 px-4">
+            <div className="max-w-2xl mx-auto bg-white border border-violet-200 rounded-2xl shadow-lg p-3 flex items-center gap-2">
+              <div className="flex-1 text-sm font-bold text-gray-700 px-2">
+                {selectedIds.length ? `${selectedIds.length} selected` : 'Tap materials to select'}
+              </div>
+              <button onClick={() => { setPrintSelect(false); setSelectedIds([]) }}
+                className="px-4 py-2.5 border border-gray-200 text-gray-500 font-bold rounded-xl text-sm min-h-[44px]">
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  window.open(`/content/print?ids=${selectedIds.join(',')}&child=${childId}`, '_blank')
+                  setPrintSelect(false); setSelectedIds([])
+                }}
+                disabled={!selectedIds.length}
+                className="px-4 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-black rounded-xl text-sm min-h-[44px]">
+                🖨️ Print {selectedIds.length || ''} →
+              </button>
+            </div>
+          </div>
+        )}
 
         <TabBar childId={childId} />
       </div>

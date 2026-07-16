@@ -10,24 +10,30 @@ import {
 
 function PrintContent() {
   const params = useSearchParams()
-  const id = params.get('id') || ''
+  // Single material (?id=) or a batch (?ids=a,b,c) — batch prints each on its own page
+  const requestedIds = (params.get('ids') || params.get('id') || '').split(',').filter(Boolean)
   const supabase = createClient()
-  const [item, setItem] = useState<Record<string, unknown> | null>(null)
+  const [items, setItems] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading] = useState(true)
+  const [landscape, setLandscape] = useState(false)
 
   useEffect(() => {
-    if (!id) return
-    supabase.from('generated_content').select('*').eq('id', id).single()
-      .then(({ data }) => { if (data) setItem(data); setLoading(false) })
-  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!requestedIds.length) { setLoading(false); return }
+    supabase.from('generated_content').select('*').in('id', requestedIds)
+      .then(({ data }) => {
+        // keep the caller's order
+        const byId = new Map((data || []).map(d => [d.id as string, d]))
+        setItems(requestedIds.map(i => byId.get(i)).filter(Boolean) as Record<string, unknown>[])
+        setLoading(false)
+      })
+  }, [requestedIds.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <div className="flex items-center justify-center h-screen text-gray-400">Loading…</div>
-  if (!item) return <div className="flex items-center justify-center h-screen text-gray-400">Not found</div>
+  if (!items.length) return <div className="flex items-center justify-center h-screen text-gray-400">Not found</div>
 
-  const data = item.content_data as Record<string, unknown>
-  const type = item.content_type as string
-
-  const renderPrint = () => {
+  const renderPrintFor = (item: Record<string, unknown>) => {
+    const data = item.content_data as Record<string, unknown>
+    const type = item.content_type as string
     const lang = (item.language as string) || 'en'
     switch (type) {
       case 'social_story': return <SocialStoryPrint data={data} title={item.title as string} />
@@ -52,15 +58,28 @@ function PrintContent() {
       {/* Print controls - hidden when printing */}
       <div className="no-print fixed top-0 left-0 right-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between z-10">
         <button onClick={() => window.close()} className="text-sm text-gray-500 hover:text-gray-700">← Close</button>
-        <div className="font-bold text-sm text-gray-900">{item.title as string}</div>
-        <button onClick={() => window.print()}
-          className="text-sm font-black px-4 py-2 bg-violet-600 text-white rounded-xl hover:bg-violet-700">
-          🖨️ Print
-        </button>
+        <div className="font-bold text-sm text-gray-900 truncate px-2">
+          {items.length === 1 ? items[0].title as string : `${items.length} materials`}
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setLandscape(l => !l)}
+            className="text-sm font-bold px-3 py-2 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50"
+            title="Boards and word walls often fit better in landscape">
+            {landscape ? '↕️ Portrait' : '↔️ Landscape'}
+          </button>
+          <button onClick={() => window.print()}
+            className="text-sm font-black px-4 py-2 bg-violet-600 text-white rounded-xl hover:bg-violet-700">
+            🖨️ Print{items.length > 1 ? ` all ${items.length}` : ''}
+          </button>
+        </div>
       </div>
 
       <div className="mt-14 print:mt-0">
-        {renderPrint()}
+        {items.map((item, i) => (
+          <div key={item.id as string} style={i < items.length - 1 ? { breakAfter: 'page' } : undefined}>
+            {renderPrintFor(item)}
+          </div>
+        ))}
       </div>
 
       <style>{`
@@ -68,7 +87,7 @@ function PrintContent() {
           .no-print { display: none !important; }
           .mt-14 { margin-top: 0 !important; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          @page { margin: 1cm; size: A4; }
+          @page { margin: 1cm; size: A4 ${landscape ? 'landscape' : 'portrait'}; }
         }
       `}</style>
     </>
