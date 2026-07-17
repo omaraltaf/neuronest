@@ -14,10 +14,26 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  // Invitation/magic links can land here with a session already in the URL — the
-  // browser client stores it on load; forward straight into the app (dashboard then
-  // routes pending guardians to their invitation on /account)
+  // Invitation/recovery/magic links deliver session tokens in the URL fragment
+  // (#access_token=…). The PKCE-flow browser client does NOT consume those on its own
+  // (found live 2026-07-17 with the first guardian invite), so consume them explicitly,
+  // then forward into the app — dashboard routes pending guardians to /account.
   useEffect(() => {
+    const hash = window.location.hash
+    if (hash.includes('access_token=')) {
+      const params = new URLSearchParams(hash.slice(1))
+      const access_token = params.get('access_token')
+      const refresh_token = params.get('refresh_token')
+      if (access_token && refresh_token) {
+        supabase.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
+          if (!error) {
+            window.history.replaceState(null, '', window.location.pathname)
+            router.replace('/dashboard')
+          }
+        })
+        return
+      }
+    }
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) router.replace('/dashboard')
     })
@@ -26,6 +42,15 @@ export default function LoginPage() {
     })
     return () => subscription.unsubscribe()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const forgotPassword = async () => {
+    if (!email.trim()) { setError('Type your email above first, then tap "Forgot password" again.'); return }
+    setError('')
+    await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${location.origin}/auth/callback?next=/account`,
+    })
+    setMessage(`Password link sent to ${email.trim()} — the link signs you in; set a new password under Account afterwards.`)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -93,11 +118,17 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-4 text-center">
+          <div className="mt-4 text-center space-y-1.5">
             <button onClick={() => { setMode(m => m === 'login' ? 'signup' : 'login'); setError(''); setMessage('') }}
-              className="text-xs text-violet-600 hover:underline font-medium">
+              className="block w-full text-xs text-violet-600 hover:underline font-medium">
               {mode === 'login' ? "New to NeuroNest? Create an account" : "Already have an account? Sign in"}
             </button>
+            {mode === 'login' && (
+              <button onClick={forgotPassword}
+                className="block w-full text-xs text-gray-400 hover:text-gray-600 hover:underline">
+                Forgot password? (or arrived by invite without one)
+              </button>
+            )}
           </div>
         </div>
       </div>
