@@ -105,6 +105,7 @@ function AboutChildContent() {
     if (!child) return
     const d: Record<string, string> = {}
     for (const f of EDIT_FIELDS) d[f.key] = (child[f.key] as string) || ''
+    d.language = (child.language as string) || 'en'
     setDraft(d)
     setInterestsDraft(((child.interests as string[]) || []).join(', '))
     setEditing(true)
@@ -221,6 +222,15 @@ function AboutChildContent() {
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-violet-400 min-h-[44px]" />
                 </div>
               ))}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Language (agents and materials speak this by default)</label>
+                <select value={draft.language || 'en'}
+                  onChange={e => setDraft(d => ({ ...d, language: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-violet-400 min-h-[44px]">
+                  <option value="en">English</option>
+                  <option value="no">Norsk (bokmål)</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Interests (comma-separated — these power personalisation)</label>
                 <input value={interestsDraft} onChange={e => setInterestsDraft(e.target.value)}

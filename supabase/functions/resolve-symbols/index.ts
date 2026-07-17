@@ -166,8 +166,12 @@ async function resolveOne(concept: string, language: string, symbolDescription?:
 // Image: https://static.arasaac.org/pictograms/{id}/{id}_300.png
 async function arasaacCandidates(concept: string, language: string): Promise<{ id: number }[]> {
   try {
+    // App language keys ≠ ARASAAC locale codes: our 'no' (Norwegian) is ARASAAC's 'nb'
+    // (bokmål) — plain 'no' gets a 400 (found live 2026-07-17, symbols silently fell
+    // through to Imagen generation)
+    const arasaacLang = language === 'no' ? 'nb' : language
     const res = await fetch(
-      `https://api.arasaac.org/v1/pictograms/${language}/search/${encodeURIComponent(concept)}`,
+      `https://api.arasaac.org/v1/pictograms/${arasaacLang}/search/${encodeURIComponent(concept)}`,
       { headers: { Accept: 'application/json' } }
     )
     if (!res.ok) {
@@ -253,8 +257,8 @@ async function qaSymbol(b64: string, word: string, mode: 'generated' | 'arasaac'
   const key = await getSecret('ANTHROPIC_API_KEY')
   if (!key) return { pass: true, reason: 'QA unavailable (no key) — accepted' }
   const question = mode === 'arasaac'
-    ? `This image is a professionally drawn AAC pictogram retrieved by keyword search for the concept "${word}" — the search may have landed on the WRONG symbol (a different sense of the word, or an unrelated concept). Judge only the meaning. pass=true if the image plausibly depicts "${word}" as an AAC symbol (conventional or abstract representations of grammar words are fine). pass=false only if it clearly depicts something OTHER than "${word}".`
-    : `This image is meant to be a flat cartoon pictogram for a young child's AAC communication card meaning "${word}". Judge it. pass=true ONLY if ALL hold: it is a simple flat cartoon/pictogram (NOT a photograph, NOT photorealistic); it shows one clear concept a young child could read as "${word}"; the background is plain white or near-white; there is NO visible text, letters, numbers, labels, dimension lines, or diagram elements anywhere.`
+    ? `This image is a professionally drawn AAC pictogram retrieved by keyword search for the concept "${word}" — the search may have landed on the WRONG symbol (a different sense of the word, or an unrelated concept). The keyword may be in any language (e.g. Norwegian) — judge against the concept's MEANING. pass=true if the image plausibly depicts "${word}" as an AAC symbol (conventional or abstract representations of grammar words are fine). pass=false only if it clearly depicts something OTHER than "${word}".`
+    : `This image is meant to be a flat cartoon pictogram for a young child's AAC communication card meaning "${word}" (the word may be in any language — judge the meaning). Judge it. pass=true ONLY if ALL hold: it is a simple flat cartoon/pictogram (NOT a photograph, NOT photorealistic); it shows one clear concept a young child could read as "${word}"; the background is plain white or near-white; there is NO visible text, letters, numbers, labels, dimension lines, or diagram elements anywhere.`
   for (const model of QA_MODELS) {
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -332,7 +336,7 @@ async function tryImagen(prompt: string, key: string): Promise<string | null> {
 
 // ─── Storage + table ────────────────────────────────────────────────────────
 async function uploadSymbol(concept: string, language: string, png: Uint8Array): Promise<string | null> {
-  const slug = concept.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'symbol'
+  const slug = concept.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/æ/g, 'ae').replace(/ø/g, 'o').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'symbol'
   const storagePath = `aac-symbols/${language}/${slug}.png`
   const { error } = await supabase.storage
     .from('neuronest-documents')

@@ -807,13 +807,13 @@ function ContentContent() {
   }, [childId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save a generated piece and open it — shared by both generation paths
-  const saveAndOpen = async (contentType: string, content: Record<string, unknown>, goalId: string | null, fallbackTitle: string) => {
+  const saveAndOpen = async (contentType: string, content: Record<string, unknown>, goalId: string | null, fallbackTitle: string, materialLang?: string) => {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: saved } = await supabase.from('generated_content').insert({
       child_id: childId, user_id: user!.id,
       goal_id: goalId, content_type: contentType,
       title: (content.title as string) || fallbackTitle,
-      content_data: content, language: child?.language as string || 'en',
+      content_data: content, language: materialLang || (child?.language as string) || 'en',
     }).select().single()
 
     if (saved) {
@@ -887,7 +887,7 @@ function ContentContent() {
       } else if (json.content && json.material_type) {
         const cfg = CONTENT_TYPES.find(t => t.id === json.material_type)
         await saveAndOpen(json.material_type, json.content, json.goal_id || null,
-          cfg?.label || 'Material')
+          cfg?.label || 'Material', json.language)
         setClarify(null)
         setClarifyAnswer('')
       }
@@ -939,7 +939,7 @@ function ContentContent() {
         goal: goals.find(g => g.id === viewing.goal_id),
         child,
         ...(isAac ? { materialType: viewing.content_type } : { contentType: viewing.content_type }),
-        language: child.language || 'en',
+        language: (viewing.language as string) || child.language || 'en',
         action: 'revise',
         feedback,
         currentContent: viewing.content_data,

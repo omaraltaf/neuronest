@@ -23,6 +23,7 @@ type RouterDecision = {
   cols: number
   period: string
   card_count: number
+  language: string
   mentioned_items: string[]
   needs_clarification: boolean
   clarifying_question: string
@@ -97,7 +98,7 @@ ${JSON.stringify(currentContent, null, 2)}
 The parent has given this feedback:
 "${feedback}"
 
-Revise the material based on their feedback. Keep everything personalised to ${child.name}, keep every concept/emoji/word_class/colour field filled per the same rules as the original (Fitzgerald Key colours by word class; concept = lowercase searchable keyword).`,
+Revise the material based on their feedback. Keep everything personalised to ${child.name}, keep every concept/emoji/word_class/colour field filled per the same rules as the original (Fitzgerald Key colours by word class; concept = lowercase searchable keyword).${lang === 'no' ? ' Write everything in Norwegian (bokmål), like the original.' : ''}`,
         }],
         output_config: { format: { type: 'json_schema', schema: AAC_TYPES[materialType].schema } },
       })
@@ -123,7 +124,7 @@ Revise the material based on their feedback. Keep everything personalised to ${c
         material_type: materialType,
         topic: topic || (goal?.label as string) || '',
         goal_id: (goal?.id as string) || '',
-        target_length: 0, rows: 0, cols: 0, period: '', card_count: 0,
+        target_length: 0, rows: 0, cols: 0, period: '', card_count: 0, language: '',
         mentioned_items: [], needs_clarification: false, clarifying_question: '',
         reason: 'manual selection',
       }
@@ -164,6 +165,14 @@ ${JSON.stringify(activeGoals.map(g => ({ id: g.id, label: g.label, area: g.area,
 
     const linkedGoal = activeGoals.find(g => g.id === decision.goal_id) || goal || null
 
+    // The parent's request can override the child's default language ("på norsk" /
+    // written in Norwegian → Norwegian material; Phase 5). Concepts follow the same
+    // language so ARASAAC is searched with Norwegian keywords.
+    const effLang = decision.language === 'no' || decision.language === 'en' ? decision.language : lang
+    const norwegianDirective = effLang === 'no'
+      ? '\n\nOUTPUT LANGUAGE — NORWEGIAN (BOKMÅL): write every parent-facing and child-facing word in natural Norwegian at the child\'s level.'
+      : ''
+
     // 2) Generate the material
     let content: Record<string, unknown>
     const aacType = AAC_TYPES[decision.material_type]
@@ -180,7 +189,7 @@ ${JSON.stringify(activeGoals.map(g => ({ id: g.id, label: g.label, area: g.area,
             topic: decision.topic || (linkedGoal?.label as string) || 'communication practice',
             goal: linkedGoal,
             child,
-            language: lang,
+            language: effLang,
             targetLength: decision.target_length || undefined,
             rows: decision.rows || undefined,
             cols: decision.cols || undefined,
@@ -198,7 +207,7 @@ ${JSON.stringify(activeGoals.map(g => ({ id: g.id, label: g.label, area: g.area,
 
       // 3) Fire the symbol engine — concept-keyed, ACKs instantly, resolves in the
       // background on Supabase (ARASAAC → Imagen). Emoji renders until symbols land.
-      fireResolveSymbols(decision.material_type, content, lang)
+      fireResolveSymbols(decision.material_type, content, effLang)
     } else {
       // Classic type routed from the free-text box — same generation as /api/content.
       // 8000 tokens: a 16-card flashcard set with all per-card fields overflows 3000
@@ -217,7 +226,7 @@ ${JSON.stringify(activeGoals.map(g => ({ id: g.id, label: g.label, area: g.area,
 CHILD CONTEXT:
 Name: ${child.name}
 Interests: ${((child.interests as string[]) || []).join(', ') || 'not specified'}
-Language: ${lang}
+Language: ${effLang}${norwegianDirective}
 ${decision.topic ? `TOPIC (from the parent's own request): ${decision.topic}` : ''}
 ${decision.card_count ? `CARD COUNT: create exactly ${decision.card_count} cards.` : ''}
 ${parentRequest ? `
@@ -233,12 +242,14 @@ Return ONLY valid JSON — no markdown, no explanation.`,
       const raw = textOf(genRes).replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
       content = JSON.parse(raw)
       if (prompt?.trim()) content.parent_request = prompt.trim()
+      fireResolveSymbols(decision.material_type, content, effLang)
     }
 
     return NextResponse.json({
       material_type: decision.material_type,
       goal_id: decision.goal_id || null,
       reason: decision.reason,
+      language: effLang,
       content,
     })
   } catch (err) {

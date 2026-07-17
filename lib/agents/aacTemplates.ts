@@ -51,11 +51,12 @@ RULES:
 - topic: rephrase what the material is about as the child's experience, short ("Choosing snack", "Morning routine on school days").
 - goal_id: copy the UUID of the active goal this most naturally supports, or "" if none fits — never force a match.
 - target_length (sentence_builder only, else 0): words per sentence. If the parent named a length use it; otherwise infer from the child's communication level — currently single words → 2 or 3, phrases emerging → 3 or 4. Never more than 2 above their current level.
-- rows/cols (comm_board only, else 0): grid size from 2x2 (early choices) to 5x4 (topic board). Fewer, larger cells for earlier communicators.
+- rows/cols (comm_board only, else 0): grid size from 2x2 (early choices) to 5x4 (topic board). Fewer, larger cells for earlier communicators — BUT the grid MUST have enough cells for every mentioned_item PLUS 1-2 core/request words. Named items are promises; size the grid up before ever dropping one.
 - period (visual_timetable only, else ""): e.g. "morning", "school day", "bedtime".
 - If the request is ambiguous between two types, pick the one that gives the child the most active communication role.
 - mentioned_items: list EVERY specific word, item, activity, person, or example the parent explicitly named ("with juice, milk and water" → ["juice","milk","water"]; "wake up, breakfast, bus" → those three). Empty array if none. These are promises to the parent — the generator must include all of them.
 - card_count (flashcard_set only, else 0): the number of cards. If the parent named a number, use it. If not, this is a REQUIRED clarification: ask "How many cards should I make — 8, 12, or 16?" (needs_clarification=true). Never guess the count for flashcards.
+- language: "no" when the request asks for Norwegian ("in Norwegian", "på norsk", "for school in Norwegian") OR is itself written in Norwegian; "en" when it explicitly asks for English; "" otherwise (the child's default applies). Materials for a Norwegian school/kindergarten are usually wanted in Norwegian — but only set "no" when the request actually signals it.
 
 CLARIFYING QUESTION:
 - Set needs_clarification=true with ONE short, warm question whenever the request lacks the CONCRETE ANCHOR the material needs. The most common gap is the SITUATION: a skill or goal named without a situation ("telling others what she needs", "asking for help", "communication practice") is NOT enough to generate from — ask which everyday situation to build it around, offering 2-3 examples ("snack time, getting dressed, or play?"). Other gaps: "a timetable" → which part of the day; "a board" → choosing between what.
@@ -69,7 +70,7 @@ Respond with a single JSON object matching the required schema.`
 export const AAC_ROUTER_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['material_type', 'topic', 'goal_id', 'target_length', 'rows', 'cols', 'period', 'card_count', 'mentioned_items', 'needs_clarification', 'clarifying_question', 'reason'],
+  required: ['material_type', 'topic', 'goal_id', 'target_length', 'rows', 'cols', 'period', 'card_count', 'language', 'mentioned_items', 'needs_clarification', 'clarifying_question', 'reason'],
   properties: {
     material_type: {
       type: 'string',
@@ -82,6 +83,7 @@ export const AAC_ROUTER_SCHEMA = {
     cols: { type: 'integer', description: 'comm_board: grid columns; otherwise 0' },
     period: { type: 'string', description: 'visual_timetable: e.g. morning, school day; otherwise empty string' },
     card_count: { type: 'integer', description: 'flashcard_set: number of cards (8/12/16), from the parent or their clarification answer; otherwise 0' },
+    language: { type: 'string', enum: ['no', 'en', ''], description: 'Requested output language, or empty for the child default' },
     mentioned_items: { type: 'array', items: { type: 'string' }, description: 'Every specific word/item/example the parent explicitly named; empty if none' },
     needs_clarification: { type: 'boolean', description: 'true only when one answer would materially change the material and no sensible default exists' },
     clarifying_question: { type: 'string', description: 'The one warm question to ask the parent, or empty string' },
@@ -110,7 +112,9 @@ const childBlock = (c: Ctx) => `
 CHILD CONTEXT:
 Name: ${c.child.name}
 Interests: ${((c.child.interests as string[]) || []).join(', ') || 'not specified'}
-Language: ${c.language}
+Language: ${c.language}${c.language === 'no' ? `
+
+OUTPUT LANGUAGE — NORWEGIAN (BOKMÅL): every word on every card, every title, how_to_use, and tip is written in natural Norwegian at the child's level. concept keywords are also Norwegian ("eple", not "apple") — they search the Norwegian pictogram library.` : ''}
 ${c.goal ? `GOAL THIS SUPPORTS: ${JSON.stringify({ label: c.goal.label, area: c.goal.area, approach: c.goal.approach, target_criterion: c.goal.target_criterion })}` : 'GOAL: none linked — build from the topic and the child\'s world.'}
 ${c.parentRequest ? `
 THE PARENT'S OWN REQUEST (verbatim — their specifics override your generic choices):
@@ -143,6 +147,7 @@ Grid: ${c.rows || 3} rows × ${c.cols || 4} columns (${(c.rows || 3) * (c.cols |
 
 A communication board is a grid the child points at (or hands over) to communicate. Rules:
 - Every cell earns its place: real choices the child would actually make, core words with high functional payoff (want, more, help, stop, finished), and the topic's key vocabulary. Motivation is the engine (PRT) — the child's genuine favourites go in.
+- Items the parent explicitly named ALWAYS get a cell each — drop a core word before dropping a named item.
 - Order cells for scanning: core/request words first (top-left), then choices, social words last.
 - how_to_use: 2-3 sentences for the parent — where to put the board, how to model pointing (point yourself as you say the word — aided language stimulation), and to honour EVERY point immediately even if the child changes their mind.
 ${childBlock(c)}`,
