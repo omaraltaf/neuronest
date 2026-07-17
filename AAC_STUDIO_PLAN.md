@@ -149,7 +149,11 @@ are already language-keyed, so it is mostly prompt/UI work when it comes.
 - Full freeform canvas editing à la InPrint (drag/drop layout) — prompt+template beats
   it for this user base; revisit only if field use demands.
 - Commercial symbol sets (Widgit/PCS/SymbolStix) — licensing, not technology.
-- If NeuroNest ever commercializes: ARASAAC's NC license requires revisiting. Researched
+- Commercialization is now PLANNED (Omar, 2026-07-17) and the ARASAAC authorization
+  request email was SENT 2026-07-17 (via arasaac.org/contact-us + arasaac@gmail.com;
+  model stated plainly: customers pay for the AI service, symbols never sold standalone,
+  attribution kept). Await reply; Mulberry chain-flip remains the documented fallback.
+- Background research on the options: ARASAAC's NC license requires authorization. Researched
   2026-07-17 (Omar asked about OpenAAC): OpenAAC/OpenSymbols is an AGGREGATOR, not a
   license — ARASAAC stays CC BY-NC-SA inside it and Sclera is NC too; the only sizeable
   truly commercial-friendly classic set is Mulberry (~3,100 symbols, CC BY-SA). The
