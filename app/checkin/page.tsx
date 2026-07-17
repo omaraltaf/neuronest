@@ -219,6 +219,26 @@ function ChatView({ checkin, childName, weekNumber, isNew, onBack }: {
         current_week: weekNumber + 1,
         next_checkin_due: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
       }).eq('child_id', childId)
+
+      // The check-in immediately reshapes the week (agreed 2026-07-17): Dr. Eriksson
+      // re-plans the current focus with this conversation as the primary signal.
+      // Fire-and-forget — takes ~1 min on the Edge Function; Today shows the result.
+      fetch('/api/weekly-focus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ childId, force: true, trigger: 'checkin' }),
+      }).catch(() => {})
+
+      const replanNote: ChatMessage = {
+        role: 'assistant',
+        content: "I've saved our check-in — and I'm reworking this week's plan right now based on everything you just told me. Give me a minute, then have a look at Today. 🌱",
+        timestamp: new Date().toISOString(),
+      }
+      const withNote = [...finalMessages, replanNote]
+      setMessages(withNote)
+      if (checkinId) {
+        await supabase.from('weekly_checkins').update({ messages: withNote }).eq('id', checkinId)
+      }
     }
   }
 

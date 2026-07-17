@@ -120,7 +120,7 @@ async function generateNotifications(
         child_id: childId, user_id: userId,
         type: 'goal_achieved',
         title: `🏆 ${childName} did it!`,
-        body: `"${goal.label}" is achieved — a skill ${childName} didn't have when you started. Dr. Santos is drafting the natural next step. id:${goal.id}`,
+        body: `"${goal.label}" is achieved — a skill ${childName} didn't have when you started. Dr. Eriksson is drafting the natural next step. id:${goal.id}`,
         action_url: `/goals?child=${childId}`,
       })
     }

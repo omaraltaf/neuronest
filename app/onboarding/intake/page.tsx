@@ -274,7 +274,7 @@ function IntakeContent() {
           <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm flex-shrink-0">👩‍⚕️</div>
             <div>
-              <div className="text-sm font-bold text-gray-900">Dr. Sarah Chen</div>
+              <div className="text-sm font-bold text-gray-900">Dr. Lena Eriksson</div>
               <div className="text-xs text-gray-400">Gets to know your child · Clinical Psychologist</div>
             </div>
             <div className="ml-auto text-xs font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full">

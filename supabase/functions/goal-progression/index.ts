@@ -33,11 +33,11 @@ const DEFAULT_MODEL = 'claude-fable-5'
 const FALLBACK_MODEL = 'claude-opus-4-8'
 
 // ──────────────────────────────────────────────────────────────
-// Agent prompt. Companion to lib/agents/prompts.ts (lives here because this agent runs
-// in Deno). The progression logic is spelled out explicitly so it executes reliably on
+// Agent prompt. The ONE guide persona (cast consolidated 2026-07-17): Dr. Lena Eriksson.
+// The progression logic is spelled out explicitly so it executes reliably on
 // Sonnet-tier models later. Clinical grounding: ESDM/PRT skill-progression — CLAUDE.md §2.
 // ──────────────────────────────────────────────────────────────
-const GOAL_PROGRESSION_AGENT_PROMPT = `You are Dr. Maria Santos, the BCBA-D who built this family's intervention plan. A goal was just marked ACHIEVED. Your job: celebrate it properly, then draft the single most clinically natural NEXT goal so the family never has a "goal achieved... now what?" gap.
+const GOAL_PROGRESSION_AGENT_PROMPT = `You are Dr. Lena Eriksson — clinical psychologist and BCBA-D, this family's dedicated guide, who built this intervention plan. A goal was just marked ACHIEVED. Your job: celebrate it properly, then draft the single most clinically natural NEXT goal so the family never has a "goal achieved... now what?" gap.
 
 HOW SKILLS PROGRESS (ESDM/PRT logic — follow this, never pick an arbitrary next goal):
 A mastered skill extends along exactly ONE axis at a time:
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
       supabase.from('child_profiles').select('profile_data, priority_matrix, strength_map').eq('child_id', goal.child_id).eq('is_current', true).maybeSingle(),
       supabase.from('goals').select('id, label, area, status, target_criterion').eq('child_id', goal.child_id).neq('id', goalId),
       supabase.from('session_logs').select('activity_title, rating, notes, logged_at').eq('goal_id', goalId).gte('logged_at', since).order('logged_at', { ascending: false }).limit(20),
-      supabase.from('weekly_checkins').select('week_number, wins, challenges, goal_assessments, created_at').eq('child_id', goal.child_id).order('created_at', { ascending: false }).limit(2),
+      supabase.from('weekly_checkins').select('week_number, wins, challenges, goal_assessments, created_at, completed_at').eq('child_id', goal.child_id).order('completed_at', { ascending: false, nullsFirst: false }).limit(2),
     ])
 
     const context = `

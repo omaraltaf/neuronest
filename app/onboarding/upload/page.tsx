@@ -136,7 +136,7 @@ function UploadContent() {
         <h1 className="text-xl font-black text-gray-900 mb-1">Upload reports & assessments</h1>
         <p className="text-sm text-gray-500 mb-5">
           {intakeDone
-            ? 'Upload any additional documents. Dr. Sarah Chen will review them and ask only new questions before you confirm the profile.'
+            ? 'Upload any additional documents. Dr. Lena Eriksson will review them and ask only new questions before you confirm the profile.'
             : 'Any documents you have — diagnostic reports, school assessments, therapy notes, ASQ-3 forms. This helps us understand your child before the interview.'}
         </p>
 
@@ -191,7 +191,7 @@ function UploadContent() {
         </div>
         <div className="text-xs text-violet-600 leading-relaxed">
           {intakeDone
-            ? 'Since your interview is complete, Dr. Sarah Chen will read these documents, show you exactly what was extracted, and ask only the new questions they raise — without repeating anything from your interview.'
+            ? 'Since your interview is complete, Dr. Lena Eriksson will read these documents, show you exactly what was extracted, and ask only the new questions they raise — without repeating anything from your interview.'
             : 'Our intake specialist reads every document before your interview. We won\'t ask questions you\'ve already answered in reports — saving time and making the interview more targeted.'}
         </div>
       </div>

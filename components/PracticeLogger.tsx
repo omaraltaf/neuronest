@@ -143,7 +143,7 @@ export default function PracticeLogger({ childId, goals, initialGoalId, activity
               <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-lg">👩‍⚕️</div>
               <div>
                 <div className="text-sm font-bold text-gray-900">Dr. Eriksson</div>
-                <div className="text-xs text-gray-400">your coach</div>
+                <div className="text-xs text-gray-400">your guide</div>
               </div>
             </div>
             <p className="text-sm text-gray-700 leading-relaxed">{coaching.empathy}</p>

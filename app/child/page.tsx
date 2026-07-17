@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 // About the child — everything the platform knows in one place: the child's details
-// (editable), Dr. Okafor's confirmed clinical profile, and the uploaded documents.
+// (editable), Dr. Eriksson's confirmed clinical profile, and the uploaded documents.
 // Reached from Account ("About →") and the Plan tab's records block.
 
 const SECTION_META: { key: string; icon: string; label: string }[] = [
@@ -21,7 +21,7 @@ const SECTION_META: { key: string; icon: string; label: string }[] = [
   { key: 'priority_matrix', icon: '🎯', label: 'Priorities' },
 ]
 
-// The profile sections are free-form JSON from Dr. Okafor — render whatever shape
+// The profile sections are free-form JSON from Dr. Eriksson — render whatever shape
 // each holds (string, list, or nested object) as readable prose, not raw JSON
 function renderValue(value: unknown, depth = 0): React.ReactNode {
   if (value === null || value === undefined || value === '') return null
@@ -251,12 +251,12 @@ function AboutChildContent() {
           )}
         </div>
 
-        {/* Clinical profile — Dr. Okafor's confirmed formulation, one accordion per domain */}
+        {/* Clinical profile — Dr. Eriksson's confirmed formulation, one accordion per domain */}
         {profile && (
           <div className="bg-white rounded-2xl border border-gray-100 p-4">
             <div className="text-[10px] font-black text-gray-400 uppercase tracking-wide">Profile</div>
             <div className="text-xs text-gray-400 mb-2">
-              Dr. Okafor — {name}&apos;s profiler · confirmed by you{profileDate ? ` · ${new Date(profileDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+              Dr. Eriksson — {name}&apos;s profiler · confirmed by you{profileDate ? ` · ${new Date(profileDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
             </div>
             {SECTION_META.filter(s => profile[s.key]).map(s => (
               <div key={s.key} className="border-b border-gray-50 last:border-0">
@@ -311,7 +311,7 @@ function AboutChildContent() {
         <div className="bg-white rounded-2xl border border-gray-100 p-4">
           <div className="text-[10px] font-black text-gray-400 uppercase tracking-wide">Family calendar</div>
           <div className="text-xs text-gray-400 mb-3">
-            Dr. Santos plans practice around these — trips, visitors, and the rhythms of your week. Your Monday answers land here automatically.
+            Dr. Eriksson plans practice around these — trips, visitors, and the rhythms of your week. Your Monday answers land here automatically.
           </div>
 
           {events.length > 0 && (

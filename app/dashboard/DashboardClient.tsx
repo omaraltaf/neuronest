@@ -74,7 +74,7 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
         <span className="text-2xl">🎯</span>
         <div className="flex-1">
           <div className="font-bold text-sm text-gray-900">This week&apos;s focus</div>
-          <div className="text-sm text-gray-400">Dr. Santos — your planner — hasn&apos;t planned this week yet</div>
+          <div className="text-sm text-gray-400">Dr. Eriksson — your guide — hasn&apos;t planned this week yet</div>
         </div>
         <button onClick={generate} disabled={generating}
           className="text-sm font-bold px-4 py-3 rounded-full bg-violet-600 text-white hover:bg-violet-700 transition disabled:opacity-50 min-h-[44px]">
@@ -95,7 +95,7 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
 
   return (
     <div className="bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-3xl px-5 py-5 shadow-md shadow-violet-200">
-      <div className="text-xs font-bold text-marigold-300 uppercase tracking-wide">This week&apos;s step in the plan · Dr. Santos — your planner</div>
+      <div className="text-xs font-bold text-marigold-300 uppercase tracking-wide">This week&apos;s step in the plan · Dr. Eriksson — your guide</div>
       <div className="font-black text-lg mt-1 leading-snug">{data.focus_title as string}</div>
       {focusGoals.length > 0 && (
         <Link href={`/goals?child=${childId}`} className="mt-2 flex flex-wrap gap-1.5">
@@ -394,7 +394,7 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
             <div className="space-y-2">
               <div className="flex gap-2.5 text-sm text-gray-600 leading-relaxed">
                 <span className="font-black text-violet-500 flex-shrink-0">1</span>
-                <span>Read <span className="font-semibold text-gray-800">this week&apos;s focus</span> in the green card below — Dr. Santos picks the ONE thing that matters most right now</span>
+                <span>Read <span className="font-semibold text-gray-800">this week&apos;s focus</span> in the green card below — Dr. Eriksson picks the ONE thing that matters most right now</span>
               </div>
               <div className="flex gap-2.5 text-sm text-gray-600 leading-relaxed">
                 <span className="font-black text-violet-500 flex-shrink-0">2</span>
@@ -427,7 +427,7 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
             <span className="text-2xl">🏆</span>
             <div className="flex-1">
               <div className="font-bold text-sm">A goal was achieved — the next step is ready</div>
-              <div className="text-sm text-emerald-100">Dr. Santos drafted it · one tap to add</div>
+              <div className="text-sm text-emerald-100">Dr. Eriksson drafted it · one tap to add</div>
             </div>
             <span className="text-white/70">›</span>
           </Link>
@@ -437,7 +437,7 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
             <span className="text-2xl">📊</span>
             <div className="flex-1">
               <div className="font-bold text-sm text-gray-900">Time for your weekly chat</div>
-              <div className="text-sm text-gray-400">Dr. Eriksson — your coach · ~15 min</div>
+              <div className="text-sm text-gray-400">Dr. Eriksson — your guide · ~15 min</div>
             </div>
             <span className="text-gray-300">›</span>
           </Link>

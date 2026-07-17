@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveModel } from '@/lib/agents/models'
 
-const EXTRACTION_PROMPT = `You are Dr. Sarah Chen, a clinical psychologist specialising in ASD assessment.
+const EXTRACTION_PROMPT = `You are Dr. Lena Eriksson, a clinical psychologist specialising in ASD assessment.
 You have been given a document to analyse. Extract all clinically relevant information and return it as structured JSON.
 
 Extract the following where present:

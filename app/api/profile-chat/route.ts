@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
   const systemPrompt = `${INTAKE_AGENT_PROMPT}
 
-You are now in PROFILE REVIEW MODE. You have already completed the intake interview and Dr. Okafor has generated a profile. You are discussing the "${sectionTitle}" section with the parent.
+You are now in PROFILE REVIEW MODE. You have already completed the intake interview and Dr. Eriksson has generated a profile. You are discussing the "${sectionTitle}" section with the parent.
 
 CURRENT SECTION CONTENT:
 ${currentContent}
@@ -27,7 +27,7 @@ ${(allSections as { key: string; title: string; content: string }[]).map(s => `$
 ${childContext}
 
 YOUR ROLE IN THIS CONVERSATION:
-- You are Dr. Sarah Chen reviewing your own findings with the parent
+- You are Dr. Lena Eriksson reviewing your own findings with the parent
 - Listen carefully to what the parent says — they know ${childName} better than any assessment
 - Ask follow-up questions if something needs clarification
 - If the parent corrects or adds information, acknowledge it warmly and revise your understanding

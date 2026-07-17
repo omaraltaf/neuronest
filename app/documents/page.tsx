@@ -258,7 +258,7 @@ function DocumentsContent() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <h2 className="font-bold text-sm text-gray-900 mb-1">Add a document</h2>
           <p className="text-xs text-gray-400 mb-4 leading-relaxed">
-            Upload any report and Dr. Sarah Chen will review it, compare it against the existing profile, and ask only the new questions it raises — without repeating anything from your interview.
+            Upload any report and Dr. Lena Eriksson will review it, compare it against the existing profile, and ask only the new questions it raises — without repeating anything from your interview.
           </p>
 
           <div className="mb-3">
@@ -294,7 +294,7 @@ function DocumentsContent() {
               <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />
             </div>
             <div className="text-sm text-violet-700 font-medium">
-              Dr. Sarah Chen is reading the document and comparing it to the existing profile…
+              Dr. Lena Eriksson is reading the document and comparing it to the existing profile…
             </div>
           </div>
         )}
@@ -305,7 +305,7 @@ function DocumentsContent() {
             <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">👩‍⚕️</div>
               <div>
-                <div className="text-sm font-bold text-gray-900">Dr. Sarah Chen</div>
+                <div className="text-sm font-bold text-gray-900">Dr. Lena Eriksson</div>
                 <div className="text-[10px] text-gray-400">Follow-up questions from new document</div>
               </div>
             </div>
@@ -336,7 +336,7 @@ function DocumentsContent() {
               <div className="px-4 py-3 border-t border-gray-50 flex gap-2">
                 <textarea value={chatInput} onChange={e => setChatInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat() } }}
-                  placeholder="Answer Dr. Chen's question…" rows={2}
+                  placeholder="Answer Dr. Eriksson's question…" rows={2}
                   className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-violet-400 transition" />
                 <button onClick={sendChat} disabled={chatLoading || !chatInput.trim()}
                   className="px-4 self-end py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-bold rounded-xl text-sm transition">

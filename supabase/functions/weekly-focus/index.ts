@@ -2,9 +2,10 @@
 // The Weekly Planning Agent (CLAUDE.md §5.1) — turns NeuroNest from reactive to proactive.
 //
 // Runs every Monday 06:00 UTC via pg_cron + pg_net (job 'weekly-focus-monday'), and on
-// demand from /api/weekly-focus (parent-triggered regeneration). For each active child it
-// pulls the last 14 days of data, has Claude reason like an NDBI-trained coach about what
-// this family should focus on this week, writes the result to neuronest.weekly_focus, and
+// demand from /api/weekly-focus (parent-triggered regeneration, and automatically with
+// trigger:'checkin' right after a weekly check-in completes — the check-in reshapes the
+// current week immediately). For each active child it pulls the last 14 days of data,
+// has Claude reason like an NDBI-trained coach, writes neuronest.weekly_focus, and
 // fires a notification.
 //
 // Runs here (not on Vercel) because the service-role key is auto-injected and pg_cron can
@@ -44,7 +45,7 @@ const FALLBACK_MODEL = 'claude-opus-4-8'
 // explicitly so it executes reliably on Sonnet-tier models, not just frontier ones.
 // Clinical grounding: NDBI / parent-mediated intervention research — see CLAUDE.md §2.
 // ──────────────────────────────────────────────────────────────
-const WEEKLY_PLANNING_AGENT_PROMPT = `You are Dr. Maria Santos, the BCBA-D who built this family's intervention plan. Every Monday morning you review the family's week and choose ONE clear focus for the coming week — the way a dedicated in-home support worker would if the family could afford one full-time.
+const WEEKLY_PLANNING_AGENT_PROMPT = `You are Dr. Lena Eriksson — clinical psychologist and BCBA-D, this family's dedicated guide. You interviewed them, wrote the child's profile, built the intervention plan, and you run their weekly check-ins yourself. Here you review the family's recent days and choose ONE clear focus for the week — the way a dedicated in-home support worker would if the family could afford one full-time.
 
 YOUR CLINICAL FRAME (NDBI — Naturalistic Developmental Behavioral Intervention):
 - Parent-mediated practice embedded in natural daily routines beats clinical drill. Every suggestion must fit inside things this family already does (meals, bath, car rides, play, bedtime).
@@ -68,6 +69,7 @@ HARD RULES:
 - Never repeat the previous week's focus verbatim; either progress it one step or pivot with a stated reason.
 - Language: match the family's language preference. Warm, specific, zero clinical jargon (say "wait 5 seconds before helping" not "constant time delay").
 - notification_body must be under 200 characters and standalone-readable: "This week: [focus] because [reason]. [starter hook]".
+- WHEN TRIGGERED BY A JUST-COMPLETED CHECK-IN (the data will say so): the parent literally just told you these things minutes ago — reflect the check-in visibly in focus_reason ("you just told me…") so they feel heard. REFINE or progress the current focus in its light rather than pivoting wildly mid-week; if the check-in genuinely demands a change of direction, make it and say it came from today's conversation.
 
 Respond with a single JSON object matching the required schema.`
 
@@ -144,6 +146,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}))
     const targetChildId: string | null = body.child_id || null
     const force: boolean = !!body.force
+    const trigger: string = body.trigger || 'cron'
     const weekStart = mondayOf(new Date())
 
     // Which children to plan for: one (manual trigger) or all active (cron)
@@ -155,7 +158,7 @@ Deno.serve(async (req) => {
     const results = []
     for (const state of activeStates || []) {
       try {
-        results.push(await planWeekForChild(state.child_id, state.user_id, state.current_week || 1, weekStart, force))
+        results.push(await planWeekForChild(state.child_id, state.user_id, state.current_week || 1, weekStart, force, trigger))
       } catch (err) {
         console.error(`weekly-focus failed for child ${state.child_id}:`, err)
         results.push({ child_id: state.child_id, error: String(err) })
@@ -169,7 +172,7 @@ Deno.serve(async (req) => {
   }
 })
 
-async function planWeekForChild(childId: string, userId: string, currentWeek: number, weekStart: string, force: boolean) {
+async function planWeekForChild(childId: string, userId: string, currentWeek: number, weekStart: string, force: boolean, trigger = 'cron') {
   // Idempotent per week — cron re-runs and duplicate triggers are no-ops unless forced
   const { data: existing } = await supabase.from('weekly_focus')
     .select('id').eq('child_id', childId).eq('week_start', weekStart).maybeSingle()
@@ -199,7 +202,7 @@ async function planWeekForChild(childId: string, userId: string, currentWeek: nu
     supabase.from('child_profiles').select('profile_data, priority_matrix, strength_map, hypotheses').eq('child_id', childId).eq('is_current', true).maybeSingle(),
     supabase.from('goals').select('id, label, area, status, approach, baseline, target_criterion, rationale, started_at, achieved_at').eq('child_id', childId),
     supabase.from('session_logs').select('activity_title, area, rating, notes, duration_min, logged_at, goal_id').eq('child_id', childId).gte('logged_at', since).order('logged_at', { ascending: false }),
-    supabase.from('weekly_checkins').select('week_number, parent_wellbeing, wins, challenges, recommendations, goal_assessments, escalation_flags, created_at').eq('child_id', childId).order('created_at', { ascending: false }).limit(2),
+    supabase.from('weekly_checkins').select('week_number, parent_wellbeing, wins, challenges, recommendations, goal_assessments, escalation_flags, created_at, completed_at').eq('child_id', childId).order('completed_at', { ascending: false, nullsFirst: false }).limit(2),
     supabase.from('generated_content').select('goal_id, content_type, title, generated_at').eq('child_id', childId).order('generated_at', { ascending: false }).limit(15),
     supabase.from('notifications').select('type, title, read, created_at').eq('child_id', childId).gte('created_at', since),
     supabase.from('weekly_focus').select('week_start, focus_data').eq('child_id', childId).order('week_start', { ascending: false }).limit(3),
@@ -219,7 +222,7 @@ ${JSON.stringify(goals || [])}
 --- SESSION LOGS, LAST 14 DAYS (${(logs || []).length} sessions) ---
 ${JSON.stringify(logs || [])}
 
---- LAST 2 WEEKLY CHECK-INS WITH DR. ERIKSSON ---
+--- LAST 2 WEEKLY CHECK-INS (yours — you ran them) ---
 ${JSON.stringify(checkins || [])}
 
 --- RECENTLY GENERATED CONTENT (what materials the family already has) ---
@@ -235,7 +238,10 @@ ${JSON.stringify(previousFocuses || [])}
 ${JSON.stringify(familyEvents || [])}
 
 --- WEEK ---
-This is programme week ${currentWeek}. The new week starts Monday ${weekStart}.
+This is programme week ${currentWeek}. The week starts Monday ${weekStart}.${trigger === 'checkin' ? `
+
+--- TRIGGER ---
+This run happens IMMEDIATELY after the parent completed their weekly check-in with you — the newest check-in above is minutes old and is the primary signal. Refine this week's focus in its light and let the parent see that you heard them.` : ''}
 `.trim()
 
   const anthropic = new Anthropic({ apiKey: await getAnthropicKey() })
@@ -288,7 +294,7 @@ This is programme week ${currentWeek}. The new week starts Monday ${weekStart}.
     action_url: `/dashboard?child=${childId}`,
   })
 
-  console.log(`weekly-focus generated for ${childId} (${servedBy}): ${focus.focus_title}`)
+  console.log(`weekly-focus generated for ${childId} (${servedBy}, trigger=${trigger}): ${focus.focus_title}`)
   return { child_id: childId, week_start: weekStart, focus_title: focus.focus_title, model: servedBy }
 }
 

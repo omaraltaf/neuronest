@@ -122,7 +122,7 @@ function GoalProposalCard({ proposal, sourceGoalLabel, child, onResolved }: {
         <span className="text-2xl">🏆</span>
         <div className="flex-1 min-w-0">
           <div className="text-xs font-bold text-emerald-100 uppercase tracking-wide">
-            &ldquo;{sourceGoalLabel}&rdquo; achieved · Dr. Santos — your planner — suggests
+            &ldquo;{sourceGoalLabel}&rdquo; achieved · Dr. Eriksson — your guide — suggests
           </div>
           <div className="font-black text-base mt-0.5">{goal.label as string}</div>
           {(data.celebration_message as string) && (
@@ -193,7 +193,7 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
   const pausedGoals = goals.filter(g => g.status === 'paused')
   const achievedGoals = goals.filter(g => g.status === 'achieved')
 
-  // Dr. Santos's suggested starting set: this week's focus goals, else the first two
+  // Dr. Eriksson's suggested starting set: this week's focus goals, else the first two
   const suggested = (focusGoalIds.length
     ? upNextGoals.filter(g => focusGoalIds.includes(g.id as string))
     : []
@@ -362,7 +362,7 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
             <div className="font-black text-sm text-gray-900">Plan</div>
-            <div className="text-xs text-gray-400">{childName}&apos;s journey · Dr. Santos — your planner</div>
+            <div className="text-xs text-gray-400">{childName}&apos;s journey · Dr. Eriksson — your guide</div>
           </div>
           <div className="text-sm font-bold text-violet-600 bg-violet-50 px-3 py-1.5 rounded-full">
             {achievedGoals.length}/{goals.length} achieved
@@ -395,10 +395,10 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
           </div>
         )}
 
-        {/* Start here — no active goals yet: Dr. Santos suggests where to begin */}
+        {/* Start here — no active goals yet: Dr. Eriksson suggests where to begin */}
         {nowGoals.length === 0 && suggestedFinal.length > 0 && (
           <div className="bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-3xl px-5 py-5 shadow-md shadow-violet-200">
-            <div className="text-xs font-bold text-violet-200 uppercase tracking-wide">🧭 Where to start · Dr. Santos — your planner</div>
+            <div className="text-xs font-bold text-violet-200 uppercase tracking-wide">🧭 Where to start · Dr. Eriksson — your guide</div>
             <p className="text-sm text-violet-100 mt-2 leading-relaxed">
               Work on <span className="font-bold text-white">one or two goals at a time</span> — small and
               focused is how skills stick. The others wait their turn and move up as {childName} progresses.
@@ -482,7 +482,7 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
             {/* Last check-in */}
             <div className="px-4 py-3.5 border-b border-gray-50">
               <div className="flex items-center justify-between mb-1">
-                <div className="text-sm font-bold text-gray-800">Weekly chat with Dr. Eriksson — your coach</div>
+                <div className="text-sm font-bold text-gray-800">Weekly chat with Dr. Eriksson — your guide</div>
                 <Link href={`/checkin?child=${childId}`} className="text-sm text-violet-600 font-semibold py-1 flex-shrink-0">
                   {latestCheckin ? 'Open →' : 'Start →'}
                 </Link>

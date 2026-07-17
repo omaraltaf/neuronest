@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ ok: false }, { status: 401 })
 
-  const { childId, force } = await req.json()
+  const { childId, force, trigger } = await req.json()
   if (!childId) return NextResponse.json({ ok: false, error: 'childId required' }, { status: 400 })
 
   // RLS-backed ownership check before spending a reasoning call
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-cron-secret': secret },
-      body: JSON.stringify({ child_id: childId, force: !!force, trigger: 'manual' }),
+      body: JSON.stringify({ child_id: childId, force: !!force, trigger: trigger === 'checkin' ? 'checkin' : 'manual' }),
     }
   )
 

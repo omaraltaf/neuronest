@@ -62,7 +62,7 @@ function formatSection(key: string, value: unknown): string {
   return parts.length > 0 ? parts.join('\n\n') : JSON.stringify(value, null, 2)
 }
 
-// Section chat panel — Dr. Sarah Chen discusses the finding with the parent
+// Section chat panel — Dr. Lena Eriksson discusses the finding with the parent
 function SectionChat({
   section,
   child,
@@ -88,7 +88,7 @@ function SectionChat({
       ? section.chatMessages
       : [{
           role: 'assistant',
-          content: `I'm Dr. Sarah Chen. Looking at what I recorded for the **${section.title}** section:\n\n${section.content}\n\nDoes this accurately reflect what you know about ${child?.name || 'your child'}? Please tell me anything that feels wrong, incomplete, or that I may have missed.`,
+          content: `I'm Dr. Lena Eriksson. Looking at what I recorded for the **${section.title}** section:\n\n${section.content}\n\nDoes this accurately reflect what you know about ${child?.name || 'your child'}? Please tell me anything that feels wrong, incomplete, or that I may have missed.`,
           timestamp: new Date().toISOString(),
         }]
   )
@@ -198,7 +198,7 @@ function SectionChat({
             👩‍⚕️
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-bold text-sm text-gray-900">Dr. Sarah Chen</div>
+            <div className="font-bold text-sm text-gray-900">Dr. Lena Eriksson</div>
             <div className="text-xs text-gray-400 truncate">
               Discussing: {section.icon} {section.title}
             </div>
@@ -244,7 +244,7 @@ function SectionChat({
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-              placeholder={section.confirmed ? "Continue the conversation…" : "Tell Dr. Chen what\'s wrong or missing…"}
+              placeholder={section.confirmed ? "Continue the conversation…" : "Tell Dr. Eriksson what\'s wrong or missing…"}
               rows={2}
               className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition"
             />
@@ -711,7 +711,7 @@ function ProfileContent() {
             <span className="text-2xl">📄</span>
             <div>
               <h1 className="text-lg font-black text-gray-900">Reviewing your documents</h1>
-              <p className="text-xs text-gray-400">Dr. Sarah Chen is comparing your documents against the interview</p>
+              <p className="text-xs text-gray-400">Dr. Lena Eriksson is comparing your documents against the interview</p>
             </div>
           </div>
           {enrichmentMessages.length === 0 && (
@@ -727,7 +727,7 @@ function ProfileContent() {
             <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">👩‍⚕️</div>
               <div>
-                <div className="text-sm font-bold text-gray-900">Dr. Sarah Chen</div>
+                <div className="text-sm font-bold text-gray-900">Dr. Lena Eriksson</div>
                 <div className="text-xs text-gray-400">Follow-up questions from your documents</div>
               </div>
             </div>
@@ -757,7 +757,7 @@ function ProfileContent() {
                 <div className="flex gap-2">
                   <textarea value={enrichmentInput} onChange={e => setEnrichmentInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendEnrichmentMessage(enrichmentComparison || {}) } }}
-                    placeholder="Answer Dr. Chen's question…" rows={2}
+                    placeholder="Answer Dr. Eriksson's question…" rows={2}
                     className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-violet-400 transition" />
                   <button onClick={() => sendEnrichmentMessage(enrichmentComparison || {})}
                     disabled={enrichmentLoading || !enrichmentInput.trim()}
@@ -784,7 +784,7 @@ function ProfileContent() {
         <div className="text-4xl mb-4 animate-pulse">🧩</div>
         <h2 className="text-lg font-bold text-gray-900 mb-2">Building {child?.name}&apos;s profile…</h2>
         <p className="text-sm text-gray-500 leading-relaxed max-w-sm mx-auto">
-          Dr. Okafor is synthesising everything from the interview into a comprehensive profile — including root cause analysis and a strength map. This takes about a minute.
+          Dr. Eriksson is synthesising everything from the interview into a comprehensive profile — including root cause analysis and a strength map. This takes about a minute.
         </p>
         <div className="mt-6 flex justify-center gap-1.5">
           <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />
@@ -799,7 +799,7 @@ function ProfileContent() {
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <h1 className="text-xl font-black text-gray-900 mb-1">Review {child?.name}&apos;s profile</h1>
           <p className="text-sm text-gray-500">
-            Dr. Okafor has synthesised your interview into this profile. Tap any section to review it with Dr. Sarah Chen — she can discuss, clarify, and update her findings based on what you tell her.
+            Dr. Eriksson has synthesised your interview into this profile. Tap any section to review it with Dr. Lena Eriksson — she can discuss, clarify, and update her findings based on what you tell her.
           </p>
           <div className="mt-3 flex items-center gap-2">
             <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">

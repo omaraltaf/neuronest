@@ -28,7 +28,7 @@ export default async function GoalsPage({ searchParams }: { searchParams: { chil
   ])
 
   if (!child) redirect('/dashboard')
-  // Dr. Santos's suggested starting goals = this week's focus goals (fallback: first two)
+  // Dr. Eriksson's suggested starting goals = this week's focus goals (fallback: first two)
   const focusGoalIds = ((weeklyFocus?.focus_data as { primary_goal_ids?: string[] })?.primary_goal_ids) || []
   return <GoalsClient child={child} goals={goals || []} recentLogs={logs || []} proposals={proposals || []}
     focusGoalIds={focusGoalIds} goalContent={goalContent || []} latestCheckin={latestCheckin} />

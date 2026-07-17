@@ -170,7 +170,7 @@ function PlanContent() {
     const intakeContext = intakeSession?.messages
       ? (intakeSession.messages as { role: string; content: string }[])
           .slice(-20)
-          .map(m => `${m.role === 'user' ? 'Parent' : 'Dr. Chen'}: ${m.content}`)
+          .map(m => `${m.role === 'user' ? 'Parent' : 'Dr. Eriksson'}: ${m.content}`)
           .join('\n')
       : ''
 
@@ -181,7 +181,7 @@ function PlanContent() {
 
     const fullContext = `${childContext}
 
-PRIORITY MATRIX (already identified by Dr. Okafor):
+PRIORITY MATRIX (already identified by Dr. Eriksson):
 ${priorityMatrix ? JSON.stringify(priorityMatrix, null, 2) : 'See profile'}
 
 ROOT CAUSES (identified in profile):
@@ -297,7 +297,7 @@ Open by acknowledging what you already know about their main concerns, then pres
         <div className="text-4xl mb-4 animate-pulse">📋</div>
         <h2 className="text-lg font-bold text-gray-900 mb-2">Building {child?.name}&apos;s plan…</h2>
         <p className="text-sm text-gray-500 max-w-sm mx-auto leading-relaxed">
-          Dr. Santos is creating a personalised, evidence-based intervention plan with specific goals, timelines, and rationale for each priority area.
+          Dr. Eriksson is creating a personalised, evidence-based intervention plan with specific goals, timelines, and rationale for each priority area.
         </p>
         <div className="mt-6 flex justify-center gap-1.5">
           <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />
@@ -346,7 +346,7 @@ Open by acknowledging what you already know about their main concerns, then pres
         <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">👩‍💼</div>
           <div>
-            <div className="text-sm font-bold text-gray-900">Dr. Maria Santos</div>
+            <div className="text-sm font-bold text-gray-900">Dr. Lena Eriksson</div>
             <div className="text-xs text-gray-400">Builds the goal plan · BCBA-D</div>
           </div>
         </div>
