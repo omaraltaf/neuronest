@@ -167,7 +167,7 @@ function ChatView({ checkin, childName, weekNumber, isNew, onBack }: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [{ role: 'user', content: `Begin week ${weekNumber} check-in for ${childName}. Active goals:\n${goalList}` }],
-          childName, weekNumber, action: 'open',
+          childName, weekNumber, childId, action: 'open',
         }),
       })
       const { text } = await res.json()
@@ -192,7 +192,7 @@ function ChatView({ checkin, childName, weekNumber, isNew, onBack }: {
     const res = await fetch('/api/checkin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: newMessages, childName, weekNumber, action: 'continue' }),
+      body: JSON.stringify({ messages: newMessages, childName, weekNumber, childId, action: 'continue' }),
     })
     const { text, checkinComplete, summary } = await res.json()
     const aiMsg: ChatMessage = { role: 'assistant', content: cleanMessage(text), timestamp: new Date().toISOString() }

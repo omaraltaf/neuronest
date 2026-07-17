@@ -56,6 +56,7 @@ async function generateNotifications(
     { data: child },
     { data: weeklyFocus },
     { data: recentContent },
+    { data: upcomingEvents },
   ] = await Promise.all([
     supabase.from('app_state').select('*').eq('child_id', childId).maybeSingle(),
     supabase.from('goals').select('*').eq('child_id', childId),
@@ -64,8 +65,12 @@ async function generateNotifications(
     supabase.from('children').select('name').eq('id', childId).maybeSingle(),
     supabase.from('weekly_focus').select('focus_data, week_start').eq('child_id', childId)
       .order('week_start', { ascending: false }).limit(1).maybeSingle(),
-    supabase.from('generated_content').select('goal_id, generated_at').eq('child_id', childId)
+    supabase.from('generated_content').select('goal_id, title, generated_at').eq('child_id', childId)
       .neq('content_type', 'child_zone_cards'),
+    supabase.from('family_events').select('id, title, event_date').eq('child_id', childId)
+      .eq('kind', 'event').eq('active', true)
+      .gte('event_date', now.toISOString().slice(0, 10))
+      .lte('event_date', new Date(now.getTime() + 5 * 86400000).toISOString().slice(0, 10)),
   ])
 
   const childName = (child?.name as string) || 'your child'
@@ -205,6 +210,25 @@ async function generateNotifications(
         })
       }
     }
+  }
+
+  // 6. Event coming up (family calendar): suggest preparing material ahead of it —
+  // one nudge per event ever (tracked by the id marker), and only when nothing was
+  // freshly made in the days since the event became known
+  for (const event of upcomingEvents || []) {
+    const { data: alreadyNudged } = await supabase.from('notifications')
+      .select('id').eq('child_id', childId).eq('type', 'event_prep')
+      .like('body', `%id:${event.id}%`).maybeSingle()
+    if (alreadyNudged) continue
+    const eventDay = new Date(event.event_date as string)
+      .toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
+    toInsert.push({
+      child_id: childId, user_id: userId,
+      type: 'event_prep',
+      title: `📅 ${event.title} — ${eventDay}`,
+      body: `Knowing what to expect makes days like this easier for ${childName}. Describe it to Emma in Materials ("a social story about ${(event.title as string).toLowerCase()}") and it's ready before it happens. id:${event.id}`,
+      action_url: `/content?child=${childId}`,
+    })
   }
 
   if (toInsert.length > 0) {

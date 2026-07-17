@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveModel } from '@/lib/agents/models'
+import { createClient } from '@/lib/supabase/server'
 import { PROGRESS_AGENT_PROMPT } from '@/lib/agents/prompts'
 import type { ChatMessage } from '@/types'
 
@@ -26,12 +27,27 @@ function cleanCheckinResponse(text: string): { displayText: string; summary: Rec
 }
 
 export async function POST(req: NextRequest) {
-  const { messages, childName, weekNumber } = await req.json()
+  const { messages, childName, weekNumber, childId } = await req.json()
+
+  // Family calendar grounds the check-in in real life — Dr. Eriksson can ask how the
+  // dentist went and knows swimming Tuesdays exist (RLS-scoped to the signed-in parent)
+  let calendarBlock = ''
+  if (childId) {
+    const supabase = createClient()
+    const { data: calendar } = await supabase.from('family_events')
+      .select('kind, title, event_date, recurrence')
+      .eq('child_id', childId).eq('active', true)
+    if (calendar?.length) {
+      calendarBlock = `\nFamily calendar (recent/upcoming events + rhythms — ask how named events went, and anchor recommendations in the rhythms): ${calendar
+        .map(e => e.kind === 'rhythm' ? `${e.title} (${e.recurrence || 'recurring'})` : `${e.title} on ${e.event_date}`)
+        .join('; ')}`
+    }
+  }
 
   const system = `${PROGRESS_AGENT_PROMPT}
 
 Child: ${childName}
-Week: ${weekNumber}
+Week: ${weekNumber}${calendarBlock}
 
 OUTPUT FORMAT — CRITICAL:
 - All conversational responses must be plain text only — no JSON, no backticks, no code blocks

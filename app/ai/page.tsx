@@ -92,18 +92,23 @@ function AIChatContent() {
   useEffect(() => {
     if (!childId) return
     const load = async () => {
-      const [{ data: child }, { data: profile }, { data: goals }, { data: savedChat }] = await Promise.all([
+      const [{ data: child }, { data: profile }, { data: goals }, { data: savedChat }, { data: calendar }] = await Promise.all([
         supabase.from('children').select('name').eq('id', childId).single(),
         supabase.from('child_profiles').select('profile_data, priority_matrix').eq('child_id', childId).eq('is_current', true).maybeSingle(),
         supabase.from('goals').select('label, area, status').eq('child_id', childId),
         supabase.from('agent_state').select('messages').eq('child_id', childId).eq('agent_type', 'ai_chat').maybeSingle(),
+        supabase.from('family_events').select('kind, title, event_date, recurrence').eq('child_id', childId).eq('active', true),
       ])
       if (child) setChildName(child.name)
       setMessages(((savedChat?.messages || []) as ChatMessage[]))
+      const calendarText = (calendar || [])
+        .map(e => e.kind === 'rhythm' ? `${e.title} (${e.recurrence || 'recurring'})` : `${e.title} on ${e.event_date}`)
+        .join('; ')
       const ctx = [
         child ? `Child: ${child.name}` : '',
         profile?.profile_data ? `Profile snapshot: ${JSON.stringify(profile.profile_data).slice(0, 800)}` : '',
         goals?.length ? `Active goals: ${goals.map(g => `${g.label} (${g.area}, ${g.status})`).join(', ')}` : '',
+        calendarText ? `Family calendar (events & rhythms): ${calendarText}` : '',
       ].filter(Boolean).join('\n')
       setProfileContext(ctx)
     }

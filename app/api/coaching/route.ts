@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   const { childId, goalId, rating, notes } = await req.json()
   if (!childId || !rating) return NextResponse.json({ coaching: null }, { status: 400 })
 
-  const [{ data: child }, { data: goal }, { data: recentLogs }] = await Promise.all([
+  const [{ data: child }, { data: goal }, { data: recentLogs }, { data: calendar }] = await Promise.all([
     supabase.from('children').select('id, name, interests, language').eq('id', childId).maybeSingle(),
     goalId
       ? supabase.from('goals').select('label, area, approach, target_criterion, activities').eq('id', goalId).maybeSingle()
@@ -39,6 +39,8 @@ export async function POST(req: NextRequest) {
       .gte('logged_at', new Date(Date.now() - 30 * 86400000).toISOString())
       .order('logged_at', { ascending: false })
       .limit(15),
+    supabase.from('family_events').select('kind, title, event_date, recurrence')
+      .eq('child_id', childId).eq('active', true),
   ])
   if (!child) return NextResponse.json({ coaching: null }, { status: 404 })
 
@@ -54,6 +56,9 @@ ${JSON.stringify({ rating, notes: notes || '(no note)', logged_at: new Date().to
 
 --- RECENT SESSION HISTORY, LAST 30 DAYS (check for patterns) ---
 ${JSON.stringify(recentLogs || [])}
+
+--- FAMILY CALENDAR (rhythms/events may explain a pattern — e.g. hard sessions landing on busy days) ---
+${JSON.stringify(calendar || [])}
 `.trim()
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
