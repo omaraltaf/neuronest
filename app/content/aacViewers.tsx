@@ -55,8 +55,8 @@ export function useAacSymbols(concepts: string[], language: string): SymbolMap {
   return symbols
 }
 
-function anyArasaac(symbols: SymbolMap): boolean {
-  return Object.values(symbols).some(s => s.source === 'arasaac')
+function sourcesUsed(symbols: SymbolMap): Set<string> {
+  return new Set(Object.values(symbols).map(s => s.source))
 }
 
 // One symbol+word cell — image when resolved, emoji until then. Fitzgerald colour on
@@ -85,10 +85,19 @@ function SymbolCell({ word, emoji, colour, symbol, size = 'md' }: {
 }
 
 export function ArasaacAttribution({ symbols }: { symbols: SymbolMap }) {
-  if (!anyArasaac(symbols)) return null
+  // Symbol credits per source actually used on this material. Mulberry (CC BY-SA 4.0)
+  // is the commercial-safe primary since 2026-07-17; ARASAAC lines appear only on
+  // legacy materials cached before the switch (non-commercial family use).
+  const used = sourcesUsed(symbols)
+  if (!used.has('mulberry') && !used.has('arasaac')) return null
   return (
-    <div className="mt-6 pt-3 border-t border-gray-200 text-[9px] text-gray-400 text-center">
-      Pictograms: ARASAAC (arasaac.org) — CC BY-NC-SA, Gov. of Aragón, author Sergio Palao
+    <div className="mt-6 pt-3 border-t border-gray-200 text-[9px] text-gray-400 text-center space-y-0.5">
+      {used.has('mulberry') && (
+        <div>Symbols: Mulberry Symbols (mulberrysymbols.org) © Steve Lee — CC BY-SA 4.0</div>
+      )}
+      {used.has('arasaac') && (
+        <div>Pictograms: ARASAAC (arasaac.org) — CC BY-NC-SA, Gov. of Aragón, author Sergio Palao</div>
+      )}
     </div>
   )
 }

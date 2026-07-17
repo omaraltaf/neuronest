@@ -149,10 +149,20 @@ are already language-keyed, so it is mostly prompt/UI work when it comes.
 - Full freeform canvas editing à la InPrint (drag/drop layout) — prompt+template beats
   it for this user base; revisit only if field use demands.
 - Commercial symbol sets (Widgit/PCS/SymbolStix) — licensing, not technology.
-- Commercialization is now PLANNED (Omar, 2026-07-17) and the ARASAAC authorization
-  request email was SENT 2026-07-17 (via arasaac.org/contact-us + arasaac@gmail.com;
-  model stated plainly: customers pay for the AI service, symbols never sold standalone,
-  attribution kept). Await reply; Mulberry chain-flip remains the documented fallback.
+- Commercialization is PLANNED. ARASAAC was asked for authorization 2026-07-17 and
+  REFUSED the same day: "There is no set a commercial license by our government that
+  allow this kind of uses… the use of the pictograms that you propose can NOT be
+  authorized." There is no negotiation path — the Government of Aragón has no
+  commercial licensing mechanism at all.
+- **EXECUTED 2026-07-17: the chain switched to Mulberry-first.** resolve-symbols v4:
+  cache → Mulberry Symbols (CC BY-SA 4.0, commercial-safe; searched via the Global
+  Symbols public API, symbolset_id 13, client-side filtered because the symbolset query
+  param is unreliable; exact/all-token label matches only, no vision QA needed on a
+  curated set; SVG stored as-is; non-English concepts get a fast-tier translation to an
+  English search term) → Imagen+QA (owned outright). ARASAAC is OUT of the chain; the
+  46 cached ARASAAC symbols were purged and re-resolved through the new chain, so the
+  platform's symbol library is fully commercial-safe. Attribution component now credits
+  Mulberry (and ARASAAC only on legacy materials, which are family-use only).
 - Background research on the options: ARASAAC's NC license requires authorization. Researched
   2026-07-17 (Omar asked about OpenAAC): OpenAAC/OpenSymbols is an AGGREGATOR, not a
   license — ARASAAC stays CC BY-NC-SA inside it and Sclera is NC too; the only sizeable

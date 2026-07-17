@@ -173,7 +173,7 @@ Notifications currently exist for streaks and achievements, but the framing shou
 
 **REMAINING ROADMAP (Omar, 2026-07-16 — build all of these):**
 3. **AAC prompt refinement from field use** — router + templates have seen only a handful of real requests; expect more catches like the type-override/filler-cards/count fixes of 2026-07-16.
-4. **ARASAAC licensing** — commercialization is now PLANNED; authorization request emailed to ARASAAC 2026-07-17 (AI service is the paid product, symbols never sold standalone). Awaiting reply; fallback = flip resolve chain to Mulberry (CC BY-SA) + own generated library. Free launch needs nothing — NC license + printed attribution already compliant.
+4. **ARASAAC licensing — RESOLVED 2026-07-17 by switching away.** ARASAAC refused commercial authorization same-day ("There is no set a commercial license by our government"). resolve-symbols v4 chain is now Mulberry Symbols (CC BY-SA 4.0, via Global Symbols API, SVG) → Imagen+QA (owned); ARASAAC removed, its 46 cached symbols purged and re-resolved. The symbol library is fully commercial-safe. See AAC_STUDIO_PLAN.md §7 for details.
 5. **Freeform canvas editing** (InPrint-style) — only if field use demands it.
 
 **On model selection going forward:** design the agent prompts and system architecture now, while Fable 5 is available, to be as good as possible — but write them to be model-agnostic (clear structured instructions, explicit reasoning steps spelled out rather than relying on implicit frontier-model judgement) so that Sonnet-tier models can execute them reliably day-to-day after Fable 5 access reverts to paid-only. The planning/goal-progression *prompt design* should get Fable 5's attention; the routine *execution* of those prompts can run on Sonnet.
