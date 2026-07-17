@@ -4,20 +4,25 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Direction B type-scale lift: everything rem-based grows ~6% — the base text a
+   tired parent reads at 21:30 starts where most dashboards stop */
+html { font-size: 106.25%; }
+
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-nunito), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #FAFAF8;
+  background: #F2EEE6; /* sand */
+  color: #23312E;      /* pine ink */
 }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: #C4BEB0; border-radius: 99px; }
 
 /* Chat bubbles — plain CSS, no @apply */
 .chat-user {
-  background: #7C3AED;
+  background: #21564C; /* fjord */
   color: #fff;
   border-radius: 18px 18px 4px 18px;
   padding: 10px 14px;
@@ -28,9 +33,9 @@ body {
 }
 
 .chat-ai {
-  background: #fff;
-  border: 1px solid #F3F4F6;
-  color: #1F2937;
+  background: #FFFEFA;
+  border: 1px solid #EAE5D9;
+  color: #23312E;
   border-radius: 18px 18px 18px 4px;
   padding: 10px 14px;
   font-size: 0.875rem;
@@ -43,7 +48,7 @@ body {
 .conf-bar {
   height: 6px;
   border-radius: 99px;
-  background: #F3F4F6;
+  background: #EAE5D9;
   overflow: hidden;
 }
 .conf-fill {
@@ -57,7 +62,7 @@ body {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #9CA3AF;
+  background: #98948B;
   display: inline-block;
   animation: pulseDot 1.4s ease-in-out infinite;
 }

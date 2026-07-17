@@ -750,7 +750,7 @@ function GenerateModal({ goals, child, onGenerate, onClose, generating }: {
 
           <button onClick={() => onGenerate(selectedGoal, selectedType)}
             disabled={generating || !selectedGoal}
-            className="w-full py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white font-black rounded-xl text-sm transition">
+            className="w-full py-3 bg-marigold-400 hover:bg-marigold-500 disabled:opacity-60 text-marigold-ink font-black rounded-xl text-sm transition">
             {generating ? 'Emma is creating…' : 'Make it →'}
           </button>
         </div>
@@ -999,7 +999,7 @@ function ContentContent() {
                 </button>
               )}
               <button onClick={() => setShowGenerate(true)}
-                className="text-sm font-black px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl min-h-[44px]">
+                className="text-sm font-black px-4 py-2.5 bg-marigold-400 hover:bg-marigold-500 text-marigold-ink rounded-xl min-h-[44px]">
                 + Make something
               </button>
             </div>
@@ -1064,7 +1064,7 @@ function ContentContent() {
                   className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-violet-400 transition min-h-[44px]" />
                 <button onClick={() => handlePromptGenerate()}
                   disabled={!promptText.trim()}
-                  className="px-4 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-black rounded-xl text-sm transition min-h-[44px] flex-shrink-0">
+                  className="px-4 py-2.5 bg-marigold-400 hover:bg-marigold-500 disabled:opacity-40 text-marigold-ink font-black rounded-xl text-sm transition min-h-[44px] flex-shrink-0">
                   Make it →
                 </button>
               </div>

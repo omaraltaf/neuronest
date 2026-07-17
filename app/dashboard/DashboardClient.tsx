@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Bell, Settings } from 'lucide-react'
 import TabBar from '@/components/TabBar'
 import PracticeLogger from '@/components/PracticeLogger'
 
@@ -94,7 +95,7 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
 
   return (
     <div className="bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-3xl px-5 py-5 shadow-md shadow-violet-200">
-      <div className="text-xs font-bold text-violet-200 uppercase tracking-wide">This week&apos;s step in the plan · Dr. Santos — your planner</div>
+      <div className="text-xs font-bold text-marigold-300 uppercase tracking-wide">This week&apos;s step in the plan · Dr. Santos — your planner</div>
       <div className="font-black text-lg mt-1 leading-snug">{data.focus_title as string}</div>
       {focusGoals.length > 0 && (
         <Link href={`/goals?child=${childId}`} className="mt-2 flex flex-wrap gap-1.5">
@@ -114,7 +115,7 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
           a busy parent wants "do this now", not a title to interpret */}
       <div className="mt-4 flex gap-2">
         <button onClick={() => setShowStarter(s => !s)}
-          className="flex-1 py-3.5 px-3 rounded-2xl bg-white text-violet-700 font-black text-sm leading-snug active:scale-95 transition min-h-[48px] text-left">
+          className="flex-1 py-3.5 px-3 rounded-2xl bg-marigold-400 text-marigold-ink font-black text-sm leading-snug active:scale-95 transition min-h-[48px] text-left">
           {practisedToday
             ? '✓ Practised today · again?'
             : <>▶ Today&apos;s 5 minutes{activity ? <span className="font-bold">: {activity.title as string}</span> : null}</>}
@@ -136,7 +137,7 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
           </ol>
           <div className="text-sm text-violet-100 mt-2">✅ Success looks like: {activity.success_looks_like as string}</div>
           <button onClick={() => setShowLogger(true)}
-            className="mt-3 w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm transition min-h-[48px]">
+            className="mt-3 w-full py-3.5 rounded-2xl bg-marigold-400 hover:bg-marigold-500 text-marigold-ink font-black text-sm transition min-h-[48px]">
             ✓ We did it — log it
           </button>
         </div>
@@ -309,7 +310,7 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
       <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-base">🧠</div>
+            <div className="w-9 h-9 rounded-xl bg-fjord-600 flex items-center justify-center text-base font-black text-marigold-400">N</div>
             <div>
               <div className="font-black text-sm text-gray-900">NeuroNest</div>
               {allChildren.length > 1 ? (
@@ -332,17 +333,17 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setShowNotifs(s => !s)} aria-label="Notifications"
-              className="relative w-11 h-11 flex items-center justify-center text-gray-500 hover:text-violet-600 transition text-lg">
-              🔔
+              className="relative w-11 h-11 flex items-center justify-center text-gray-500 hover:text-fjord-600 transition">
+              <Bell size={20} strokeWidth={2.2} />
               {notifications.length > 0 && (
-                <span className="absolute top-1 right-1 w-4.5 h-4.5 min-w-[18px] px-0.5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                <span className="absolute top-1 right-1 w-4.5 h-4.5 min-w-[18px] px-0.5 bg-clay-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
                   {notifications.length > 9 ? '9+' : notifications.length}
                 </span>
               )}
             </button>
             <Link href="/account" aria-label="Account"
-              className="w-11 h-11 flex items-center justify-center text-gray-500 hover:text-violet-600 transition text-lg">
-              ⚙️
+              className="w-11 h-11 flex items-center justify-center text-gray-500 hover:text-fjord-600 transition">
+              <Settings size={20} strokeWidth={2.2} />
             </Link>
           </div>
         </div>
