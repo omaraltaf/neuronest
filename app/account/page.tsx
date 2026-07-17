@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 // Account — the person behind the platform: sign-in details, the children on this
@@ -16,8 +16,13 @@ type Guardian = {
 
 function AccountContent() {
   const router = useRouter()
+  const params = useSearchParams()
   const supabase = createClient()
 
+  // Recovery links land here with ?pw=1 — open the password form straight away
+  const [pwOpen, setPwOpen] = useState(params.get('pw') === '1')
+  const [pw1, setPw1] = useState('')
+  const [pw2, setPw2] = useState('')
   const [email, setEmail] = useState('')
   const [userId, setUserId] = useState('')
   const [memberSince, setMemberSince] = useState('')
@@ -107,9 +112,16 @@ function AccountContent() {
     load()
   }
 
+  // Signed-in users set their password directly — no email round-trip (the reset
+  // email is only for the signed-out "Forgot password?" path on the login page)
   const changePassword = async () => {
-    await supabase.auth.resetPasswordForEmail(email)
-    setNotice(`Password reset link sent to ${email}.`)
+    if (pw1.length < 6) { setNotice('Password needs at least 6 characters.'); return }
+    if (pw1 !== pw2) { setNotice("The two passwords don't match — try again."); return }
+    setBusy(true)
+    const { error } = await supabase.auth.updateUser({ password: pw1 })
+    setNotice(error ? `Could not update the password: ${error.message}` : '🔑 Password updated — use it next time you sign in.')
+    if (!error) { setPwOpen(false); setPw1(''); setPw2('') }
+    setBusy(false)
   }
 
   const signOut = async () => {
@@ -165,7 +177,7 @@ function AccountContent() {
           <div className="font-bold text-sm text-gray-900">{email}</div>
           <div className="text-xs text-gray-400 mt-0.5">Member since {memberSince}</div>
           <div className="flex gap-2 mt-3">
-            <button onClick={changePassword}
+            <button onClick={() => setPwOpen(o => !o)}
               className="flex-1 py-2.5 border border-gray-200 text-gray-600 font-bold rounded-xl text-sm min-h-[44px] hover:bg-gray-50">
               🔑 Change password
             </button>
@@ -174,6 +186,23 @@ function AccountContent() {
               Sign out
             </button>
           </div>
+
+          {pwOpen && (
+            <div className="mt-3 bg-gray-50 rounded-xl p-3 space-y-2">
+              <div className="text-xs font-bold text-gray-600">Set a new password</div>
+              <input type="password" value={pw1} onChange={e => setPw1(e.target.value)}
+                placeholder="New password (min 6 characters)" minLength={6} autoFocus
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-violet-400 min-h-[44px]" />
+              <input type="password" value={pw2} onChange={e => setPw2(e.target.value)}
+                placeholder="Same password again"
+                onKeyDown={e => { if (e.key === 'Enter') changePassword() }}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:border-violet-400 min-h-[44px]" />
+              <button onClick={changePassword} disabled={busy || !pw1 || !pw2}
+                className="w-full py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-black rounded-xl text-sm min-h-[44px]">
+                Save password
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Children */}

@@ -25,10 +25,12 @@ export default function LoginPage() {
       const access_token = params.get('access_token')
       const refresh_token = params.get('refresh_token')
       if (access_token && refresh_token) {
+        // Recovery links land on the set-password form; everything else goes into the app
+        const isRecovery = params.get('type') === 'recovery'
         supabase.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
           if (!error) {
             window.history.replaceState(null, '', window.location.pathname)
-            router.replace('/dashboard')
+            router.replace(isRecovery ? '/account?pw=1' : '/dashboard')
           }
         })
         return
@@ -47,9 +49,9 @@ export default function LoginPage() {
     if (!email.trim()) { setError('Type your email above first, then tap "Forgot password" again.'); return }
     setError('')
     await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${location.origin}/auth/callback?next=/account`,
+      redirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent('/account?pw=1')}`,
     })
-    setMessage(`Password link sent to ${email.trim()} — the link signs you in; set a new password under Account afterwards.`)
+    setMessage(`Password link sent to ${email.trim()} — the link signs you in and opens the set-a-new-password form.`)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
