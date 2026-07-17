@@ -229,6 +229,14 @@ function ChatView({ checkin, childName, weekNumber, isNew, onBack }: {
         body: JSON.stringify({ childId, force: true, trigger: 'checkin' }),
       }).catch(() => {})
 
+      // ...and may suggest goal status changes (achieved / start now) for one-tap
+      // confirmation on the Plan tab — the parent decides, never the system
+      fetch('/api/goal-status-proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ childId }),
+      }).catch(() => {})
+
       const replanNote: ChatMessage = {
         role: 'assistant',
         content: "I've saved our check-in — and I'm reworking this week's plan right now based on everything you just told me. Give me a minute, then have a look at Today. 🌱",

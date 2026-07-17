@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import TabBar from '@/components/TabBar'
 import PracticeLogger from '@/components/PracticeLogger'
+import StatusProposals from '@/components/StatusProposals'
 
 // Goals as a staged journey, not a wall (field feedback 2026-07-06): parents work on
 // 1-2 goals at a time ("Working on now"), the rest wait in "Up next", achieved goals
@@ -371,6 +372,9 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-3 pb-32">
+        {/* Status suggestions from the latest check-in — one tap to confirm */}
+        <StatusProposals childId={childId} goals={goals} />
+
         {/* Pending next-goal proposals (Goal Progression Engine) */}
         {proposals.map(p => {
           const sourceGoal = goals.find(g => g.id === p.source_goal_id)
