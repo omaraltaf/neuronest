@@ -108,7 +108,7 @@ export default function PracticeLogger({ childId, goals, initialGoalId, activity
                     aria-label={`Rating ${r} of 5`}
                     className="flex-1 min-h-[52px] rounded-2xl text-2xl transition border-2"
                     style={rating === r
-                      ? { borderColor: '#7C3AED', background: '#F5F0FF', transform: 'scale(1.05)' }
+                      ? { borderColor: '#21564C', background: '#EDF4F0', transform: 'scale(1.05)' }
                       : { borderColor: '#E5E7EB', background: '#fff' }}>
                     {RATING_FACES[r]}
                   </button>

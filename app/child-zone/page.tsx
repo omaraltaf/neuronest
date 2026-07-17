@@ -167,7 +167,7 @@ function FlashcardGame({
   if (done) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-center px-6"
-        style={{ background: 'linear-gradient(135deg, #7C3AED, #4F46E5)' }}>
+        style={{ background: 'linear-gradient(135deg, #E2704A, #C04E2B)' }}>
         <div className="text-7xl mb-4 animate-bounce">🏆</div>
         <div className="text-4xl font-black text-white mb-2">Amazing!</div>
         <div className="text-xl text-white/80 mb-2">{childName}!</div>
@@ -176,7 +176,7 @@ function FlashcardGame({
         </div>
         <div className="flex gap-4">
           <button onClick={() => { setCurrent(0); setRevealed(false); setDone(false); setSessionStars(0) }}
-            className="px-6 py-3 bg-white text-violet-600 font-black rounded-2xl text-base">
+            className="px-6 py-3 bg-white text-clay-600 font-black rounded-2xl text-base">
             🔄 Again!
           </button>
           <button onClick={onExit}
@@ -314,7 +314,7 @@ function SongActivity({ onExit, childName, onStar }: { onExit: () => void; child
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #7C3AED, #4F46E5)' }}>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #E2704A, #C04E2B)' }}>
       <div className="flex items-center px-4 pt-5 pb-4">
         <button onClick={onExit} className="w-10 h-10 rounded-full bg-black/20 flex items-center justify-center text-white text-xl">←</button>
         <div className="flex-1 text-center text-white font-black text-lg">🎵 Songs</div>
@@ -347,7 +347,7 @@ function HomeScreen({ childName, stars, onStart, myWordsLabel }: {
   myWordsLabel: string | null
 }) {
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #4F46E5 0%, #7C3AED 50%, #A855F7 100%)' }}>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #E2704A 0%, #D95E38 55%, #EAB03A 100%)' }}>
       {/* Back + stars */}
       <div className="flex items-center justify-between px-4 pt-6 pb-4">
         <Link href="/dashboard" className="w-10 h-10 rounded-full bg-black/20 flex items-center justify-center text-white text-xl">←</Link>
@@ -479,7 +479,7 @@ function ChildZoneContent() {
 export default function ChildZonePage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-screen" style={{ background: 'linear-gradient(135deg, #7C3AED, #4F46E5)' }}>
+      <div className="flex items-center justify-center h-screen" style={{ background: 'linear-gradient(135deg, #E2704A, #EAB03A)' }}>
         <div className="text-7xl animate-pulse">✨</div>
       </div>
     }>

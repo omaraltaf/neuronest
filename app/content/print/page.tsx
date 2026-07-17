@@ -239,7 +239,7 @@ function ActivityPackPrint({ data, title }: { data: Record<string, unknown>; tit
 
 function FlashcardPrint({ data, title, language = 'en' }: { data: Record<string, unknown>; title: string; language?: string }) {
   const cards = (data.cards as Record<string, unknown>[]) || []
-  const colour = (data.theme_colour as string) || '#7C3AED'
+  const colour = (data.theme_colour as string) || '#21564C'
   // Real AAC symbols from the shared concept library; emoji for pre-upgrade sets
   const symbols = useAacSymbols(cards.map(c => (c.concept as string) || ''), language)
 
@@ -373,7 +373,7 @@ function RolePlayPrint({ data, title }: { data: Record<string, unknown>; title: 
             <div key={i} className="flex items-start gap-3">
               <div className="flex-shrink-0 text-center w-16">
                 <div className="text-3xl">{line.emoji as string}</div>
-                <div className="text-[10px] font-black mt-0.5" style={{ color: isParent ? '#7C3AED' : '#16A34A' }}>
+                <div className="text-[10px] font-black mt-0.5" style={{ color: isParent ? '#21564C' : '#3D8159' }}>
                   {line.speaker as string}
                 </div>
               </div>

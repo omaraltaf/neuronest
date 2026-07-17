@@ -378,9 +378,11 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4 pb-28">
-        {/* Greeting */}
+        {/* Greeting — time-aware, no exclamation marks at 06:30 */}
         <div>
-          <h1 className="text-2xl font-black text-gray-900">Hello! 👋</h1>
+          <h1 className="text-2xl font-black text-gray-900">
+            {now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening'}
+          </h1>
           <p className="text-sm text-gray-400 mt-0.5">{date}</p>
         </div>
 

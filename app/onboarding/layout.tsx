@@ -45,13 +45,13 @@ function StepsBar() {
               {canNav ? (
                 <Link href={href}
                   className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition"
-                  style={{ background: '#7C3AED', color: '#fff' }}>
+                  style={{ background: '#21564C', color: '#fff' }}>
                   ✓
                 </Link>
               ) : (
                 <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition"
                   style={{
-                    background: active ? '#7C3AED' : done ? '#7C3AED' : '#F3F4F6',
+                    background: active ? '#21564C' : done ? '#21564C' : '#EAE5D9',
                     color: active || done ? '#fff' : '#9CA3AF',
                   }}>
                   {done ? '✓' : step.num}
@@ -63,7 +63,7 @@ function StepsBar() {
             </div>
             {i < STEPS.length - 1 && (
               <div className="h-0.5 flex-1 mx-1 mb-4 rounded-full"
-                style={{ background: step.num < currentStep ? '#7C3AED' : '#E5E7EB' }} />
+                style={{ background: step.num < currentStep ? '#21564C' : '#DCD6C8' }} />
             )}
           </div>
         )

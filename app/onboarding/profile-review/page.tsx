@@ -566,10 +566,10 @@ function ProfileContent() {
   }
 
   const SECTION_DEFS = (childName: string) => [
-    { key: 'snapshot',        title: `${childName} — Overview`,   icon: '🌟', color: '#7C3AED' },
+    { key: 'snapshot',        title: `${childName} — Overview`,   icon: '🌟', color: '#21564C' },
     { key: 'communication',   title: 'Communication Profile',     icon: '💬', color: '#E8635A' },
     { key: 'social',          title: 'Social Profile',            icon: '🤝', color: '#5B7FE8' },
-    { key: 'sensory',         title: 'Sensory Profile',           icon: '🌀', color: '#7C3AED' },
+    { key: 'sensory',         title: 'Sensory Profile',           icon: '🌀', color: '#7C9885' },
     { key: 'behaviour',       title: 'Behaviour & Regulation',    icon: '⚖️', color: '#D97706' },
     { key: 'cognition',       title: 'Cognitive Profile',         icon: '🧩', color: '#0891B2' },
     { key: 'motor',           title: 'Motor Profile',             icon: '🏃', color: '#16A34A' },
@@ -846,8 +846,8 @@ function ProfileContent() {
                     className="text-xs font-bold px-3 py-1.5 rounded-full border transition"
                     style={{
                       background: section.chatMessages.length > 0 ? '#F5F0FF' : '#fff',
-                      borderColor: section.chatMessages.length > 0 ? '#7C3AED' : '#E5E7EB',
-                      color: section.chatMessages.length > 0 ? '#7C3AED' : '#6B7280',
+                      borderColor: section.chatMessages.length > 0 ? '#21564C' : '#DCD6C8',
+                      color: section.chatMessages.length > 0 ? '#21564C' : '#7E7B72',
                     }}>
                     {section.chatMessages.length > 0 ? '💬 Continue chat' : '💬 Discuss'}
                   </button>

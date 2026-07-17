@@ -20,7 +20,7 @@ const DOMAIN_LABELS: Record<keyof DomainConfidence, string> = {
 const DOMAIN_COLORS: Record<keyof DomainConfidence, string> = {
   communication: '#E8635A',
   social: '#5B7FE8',
-  sensory: '#7C3AED',
+  sensory: '#7C9885',
   behaviour: '#D97706',
   motor: '#16A34A',
   cognition: '#0891B2',

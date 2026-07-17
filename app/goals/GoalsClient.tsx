@@ -14,7 +14,7 @@ import PracticeLogger from '@/components/PracticeLogger'
 const AREA_CONFIG: Record<string, { color: string; icon: string; bg: string }> = {
   communication: { color: '#E8635A', icon: '💬', bg: '#FFF5F5' },
   social:        { color: '#5B7FE8', icon: '🤝', bg: '#F0F4FF' },
-  sensory:       { color: '#7C3AED', icon: '🌀', bg: '#F5F0FF' },
+  sensory:       { color: '#7C9885', icon: '🌀', bg: '#EFF4F0' },
   motor:         { color: '#16A34A', icon: '🏃', bg: '#F0FFF4' },
   cognition:     { color: '#0891B2', icon: '🧩', bg: '#F0FBFF' },
   behaviour:     { color: '#D97706', icon: '⚖️', bg: '#FFFBF0' },
@@ -240,7 +240,7 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
 
   const renderGoalCard = (goal: Record<string, unknown>, dimmed = false) => {
     const area = goal.area as string
-    const cfg = AREA_CONFIG[area] || { color: '#7C3AED', icon: '📌', bg: '#F5F0FF' }
+    const cfg = AREA_CONFIG[area] || { color: '#21564C', icon: '📌', bg: '#EDF4F0' }
     const status = goal.status as string
     const scfg = STATUS_CONFIG[status] || STATUS_CONFIG.not_started
     const recentLogCount = logCountByGoal[goal.id as string] || 0

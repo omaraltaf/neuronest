@@ -80,8 +80,8 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg shadow-violet-200">
-            🧠
+          <div className="w-16 h-16 rounded-2xl bg-fjord-600 flex items-center justify-center text-3xl font-black text-marigold-400 mx-auto mb-4 shadow-lg shadow-fjord-200">
+            N
           </div>
           <h1 className="text-2xl font-black text-gray-900">NeuroNest</h1>
           <p className="text-sm text-gray-500 mt-1">A personalised guide for every child&apos;s journey</p>

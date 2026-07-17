@@ -137,7 +137,7 @@ export function CommBoardViewer({ data, language = 'en' }: { data: Record<string
         {cells.map((c, i) => (
           <SymbolCell key={i}
             word={c.word as string} emoji={c.emoji as string}
-            colour={c.colour as string || '#7C3AED'}
+            colour={c.colour as string || '#21564C'}
             symbol={symbols[(c.concept as string || '').toLowerCase()]} />
         ))}
       </div>
@@ -164,7 +164,7 @@ export function CommBoardPrint({ data, title, language = 'en' }: { data: Record<
         {cells.map((c, i) => (
           <SymbolCell key={i} size="lg"
             word={c.word as string} emoji={c.emoji as string}
-            colour={c.colour as string || '#7C3AED'}
+            colour={c.colour as string || '#21564C'}
             symbol={symbols[(c.concept as string || '').toLowerCase()]} />
         ))}
       </div>
@@ -208,7 +208,7 @@ export function SentenceBuilderViewer({ data, language = 'en' }: { data: Record<
               {(s.words || []).map((w, j) => (
                 <SymbolCell key={j}
                   word={w.word as string} emoji={w.emoji as string}
-                  colour={w.colour as string || '#7C3AED'}
+                  colour={w.colour as string || '#21564C'}
                   symbol={symbols[(w.concept as string || '').toLowerCase()]} />
               ))}
             </div>
@@ -250,7 +250,7 @@ export function SentenceBuilderPrint({ data, title, language = 'en' }: { data: R
                 <div key={j} className="border-2 border-dashed border-gray-300 rounded-xl p-1.5">
                   <SymbolCell size="lg"
                     word={w.word as string} emoji={w.emoji as string}
-                    colour={w.colour as string || '#7C3AED'}
+                    colour={w.colour as string || '#21564C'}
                     symbol={symbols[(w.concept as string || '').toLowerCase()]} />
                 </div>
               ))}
@@ -413,7 +413,7 @@ export function ComprehensionViewer({ data, language = 'en' }: { data: Record<st
                   }}>
                   <SymbolCell
                     word={c.word as string} emoji={c.emoji as string}
-                    colour={c.colour as string || '#7C3AED'}
+                    colour={c.colour as string || '#21564C'}
                     symbol={symbols[(c.concept as string || '').toLowerCase()]} />
                 </button>
               )
@@ -473,7 +473,7 @@ export function ComprehensionPrint({ data, title, language = 'en' }: { data: Rec
             {(q.choices || []).map((c, ci) => (
               <SymbolCell key={ci} size="lg"
                 word={c.word as string} emoji={c.emoji as string}
-                colour={c.colour as string || '#7C3AED'}
+                colour={c.colour as string || '#21564C'}
                 symbol={symbols[(c.concept as string || '').toLowerCase()]} />
             ))}
           </div>
@@ -690,7 +690,7 @@ function groupByClass(words: Cell[]): { word_class: string; colour: string; word
   return order
     .map(wc => ({
       word_class: wc,
-      colour: (words.find(w => w.word_class === wc)?.colour as string) || '#7C3AED',
+      colour: (words.find(w => w.word_class === wc)?.colour as string) || '#21564C',
       words: words.filter(w => w.word_class === wc),
     }))
     .filter(g => g.words.length > 0)
@@ -788,7 +788,7 @@ export function MatchingGameViewer({ data, language = 'en' }: { data: Record<str
         {pairs.map((p, i) => (
           <SymbolCell key={i}
             word={p.word as string} emoji={p.emoji as string}
-            colour={p.colour as string || '#7C3AED'}
+            colour={p.colour as string || '#21564C'}
             symbol={symbols[(p.concept as string || '').toLowerCase()]} />
         ))}
       </div>
@@ -820,7 +820,7 @@ export function MatchingGamePrint({ data, title, language = 'en' }: { data: Reco
           <div key={i} className="border-2 border-dashed border-gray-300 rounded-xl p-1.5">
             <SymbolCell size="lg"
               word={p.word as string} emoji={p.emoji as string}
-              colour={p.colour as string || '#7C3AED'}
+              colour={p.colour as string || '#21564C'}
               symbol={symbols[(p.concept as string || '').toLowerCase()]} />
           </div>
         ))}
@@ -830,13 +830,13 @@ export function MatchingGamePrint({ data, title, language = 'en' }: { data: Reco
           <div key={i} className="border-2 border-dashed border-gray-300 rounded-xl p-1.5">
             {pictureWord ? (
               <div className="rounded-xl flex items-center justify-center font-black text-xl text-white py-8 px-2 text-center"
-                style={{ background: p.colour as string || '#7C3AED' }}>
+                style={{ background: p.colour as string || '#21564C' }}>
                 {p.word as string}
               </div>
             ) : (
               <SymbolCell size="lg"
                 word={p.word as string} emoji={p.emoji as string}
-                colour={p.colour as string || '#7C3AED'}
+                colour={p.colour as string || '#21564C'}
                 symbol={symbols[(p.concept as string || '').toLowerCase()]} />
             )}
           </div>

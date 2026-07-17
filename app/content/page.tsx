@@ -27,12 +27,14 @@ const CONTENT_TYPES = [
   { id: 'role_play',      icon: '🎭', label: 'Role Play Script', desc: 'Visual scenario with cues' },
 ]
 
+// Harmonised with the Fjord & Marigold palette (muted, warm) — distinct per type but
+// one family. NOT Fitzgerald colours; those live on the AAC materials themselves.
 const TYPE_COLORS: Record<string, string> = {
-  social_story: '#5B7FE8', activity_pack: '#E8635A',
-  flashcard_set: '#7C3AED', sensory_card: '#16A34A', role_play: '#D97706',
-  comm_board: '#0891B2', sentence_builder: '#059669', visual_timetable: '#B45309',
-  comprehension: '#2563EB', number_cards: '#F97316', reward_chart: '#CA8A04',
-  word_wall: '#DB2777', matching_game: '#10B981',
+  social_story: '#4A6FA5', activity_pack: '#D55E38',
+  flashcard_set: '#21564C', sensory_card: '#7C9885', role_play: '#B85C6E',
+  comm_board: '#2C7A8C', sentence_builder: '#3D8159', visual_timetable: '#B07A22',
+  comprehension: '#6B5CA5', number_cards: '#94553F', reward_chart: '#D3952B',
+  word_wall: '#A64D79', matching_game: '#4E9B6F',
 }
 
 // AAC Studio types generate via /api/aac-studio (concept-keyed symbols); the rest via /api/content
@@ -281,7 +283,7 @@ function FlashcardViewer({ data, language = 'en' }: { data: Record<string, unkno
   const [showDetails, setShowDetails] = useState(false)
   const cards = (data.cards as Record<string, unknown>[]) || []
   const card = cards[activeCard]
-  const colour = (data.theme_colour as string) || '#7C3AED'
+  const colour = (data.theme_colour as string) || '#21564C'
   // Real AAC symbols from the shared concept library (sets generated before the
   // concept upgrade have no concept field and simply keep their emoji)
   const symbols = useAacSymbols(cards.map(c => (c.concept as string) || ''), language)
@@ -504,11 +506,11 @@ function RolePlayViewer({ data }: { data: Record<string, unknown> }) {
           const isParent = line.speaker === 'Parent'
           return (
             <div key={i} className={`rounded-xl p-3 ${isParent ? 'ml-0 mr-6' : 'ml-6 mr-0'}`}
-              style={{ background: isParent ? '#F5F0FF' : '#F0FFF4', borderLeft: isParent ? '3px solid #7C3AED' : '3px solid #16A34A' }}>
+              style={{ background: isParent ? '#EDF4F0' : '#F1F7E9', borderLeft: isParent ? '3px solid #21564C' : '3px solid #3D8159' }}>
               <div className="flex items-center gap-1.5 mb-1.5">
                 <span className="text-lg">{line.emoji as string}</span>
                 <span className="text-[10px] font-black uppercase"
-                  style={{ color: isParent ? '#7C3AED' : '#16A34A' }}>
+                  style={{ color: isParent ? '#21564C' : '#3D8159' }}>
                   {line.speaker as string}
                 </span>
               </div>
@@ -576,7 +578,7 @@ function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, onGenerateI
   const [feedback, setFeedback] = useState('')
   const data = item.content_data as Record<string, unknown>
   const cfg = CONTENT_TYPES.find(t => t.id === item.content_type)
-  const color = TYPE_COLORS[item.content_type as string] || '#7C3AED'
+  const color = TYPE_COLORS[item.content_type as string] || '#21564C'
 
   const renderContent = () => {
     const lang = (item.language as string) || 'en'
@@ -1157,7 +1159,7 @@ function ContentContent() {
 
           {filtered.map(item => {
             const cfg = CONTENT_TYPES.find(t => t.id === item.content_type)
-            const color = TYPE_COLORS[item.content_type as string] || '#7C3AED'
+            const color = TYPE_COLORS[item.content_type as string] || '#21564C'
             const selected = selectedIds.includes(item.id as string)
             return (
               <button key={item.id as string}

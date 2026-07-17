@@ -6,7 +6,7 @@ import { PLANNING_AGENT_PROMPT, buildChildContext } from '@/lib/agents/prompts'
 import type { Child, ChildProfile, ChatMessage } from '@/types'
 
 const AREA_COLORS: Record<string, string> = {
-  communication: '#E8635A', social: '#5B7FE8', sensory: '#7C3AED',
+  communication: '#D55E38', social: '#4A6FA5', sensory: '#7C9885',
   motor: '#16A34A', cognition: '#0891B2', behaviour: '#D97706', school: '#DB2777',
 }
 
@@ -321,7 +321,7 @@ Open by acknowledging what you already know about their main concerns, then pres
                 Goals ({planData.goals.length})
               </div>
               {planData.goals.map((goal: PlanGoal, i: number) => {
-                const color = AREA_COLORS[goal.area || ''] || '#7C3AED'
+                const color = AREA_COLORS[goal.area || ''] || '#21564C'
                 return (
                   <div key={i} className="flex items-start gap-3 bg-gray-50 rounded-xl px-3 py-3">
                     <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: color }} />
