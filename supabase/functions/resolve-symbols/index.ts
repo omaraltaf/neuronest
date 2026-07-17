@@ -133,7 +133,12 @@ async function resolveOne(concept: string, language: string, symbolDescription?:
   // KEY keeps the material's language).
   const searchTerm = language === 'en' ? concept : await translateToEnglish(concept)
   if (searchTerm) {
-    const mulberry = await tryMulberry(searchTerm)
+    // Plural concepts miss singular labels ("stars" vs Mulberry's "star") — retry the
+    // naive singular before giving up on a real drawn symbol
+    let mulberry = await tryMulberry(searchTerm)
+    if (!mulberry && searchTerm.endsWith('s') && searchTerm.length > 3) {
+      mulberry = await tryMulberry(searchTerm.slice(0, -1))
+    }
     if (mulberry) {
       const storagePath = await uploadSymbol(concept, language, mulberry.bytes, 'svg')
       if (storagePath) {
