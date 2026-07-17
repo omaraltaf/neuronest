@@ -394,7 +394,7 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
             <div className="space-y-2">
               <div className="flex gap-2.5 text-sm text-gray-600 leading-relaxed">
                 <span className="font-black text-violet-500 flex-shrink-0">1</span>
-                <span>Read <span className="font-semibold text-gray-800">this week&apos;s focus</span> in the purple card below — Dr. Santos picks the ONE thing that matters most right now</span>
+                <span>Read <span className="font-semibold text-gray-800">this week&apos;s focus</span> in the green card below — Dr. Santos picks the ONE thing that matters most right now</span>
               </div>
               <div className="flex gap-2.5 text-sm text-gray-600 leading-relaxed">
                 <span className="font-black text-violet-500 flex-shrink-0">2</span>

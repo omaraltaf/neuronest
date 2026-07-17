@@ -169,7 +169,7 @@ async function generateNotifications(
         type: 'no_sessions',
         title: '🌱 A fresh start is one tap away',
         body: focusTitle && starter
-          ? `This week's focus is "${focusTitle}" — the ${starter} takes 5 minutes and it's ready on your dashboard.`
+          ? `This week's focus is "${focusTitle}" — the ${starter} takes 5 minutes and it's ready on your Today screen.`
           : `Nothing logged yet this week — that's okay. One 5-minute moment with ${childName} tonight restarts everything.`,
         action_url: `/dashboard?child=${childId}`,
       })
