@@ -51,19 +51,42 @@ function AccountContent() {
 
   useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Sends the actual invitation email (via the invite-guardian Edge Function) for a
+  // pending invite — also used to resend for invites created before email existed
+  const sendInviteEmail = async (childId: string, email: string) => {
+    const res = await fetch('/api/invite-guardian', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ childId, email }),
+    })
+    const result = await res.json().catch(() => ({}))
+    if (result.emailed) {
+      setNotice(`📧 Invite email sent to ${email} — the link in it signs them in and shows the invitation to accept.`)
+    } else if (result.existing) {
+      setNotice(`${email} already has a NeuroNest account — the invitation is waiting under ⚙️ Account next time they sign in.`)
+    } else {
+      setNotice(`The invite is saved, but the email could not be sent — they can still sign up at neuronest-nine.vercel.app with ${email} and accept from their Account page.`)
+    }
+  }
+
   const invite = async () => {
     if (!inviteEmail.trim() || !inviteChild) return
     setBusy(true)
+    const email = inviteEmail.trim().toLowerCase()
     const child = children.find(c => c.id === inviteChild)
     const { error } = await supabase.from('child_guardians').insert({
       child_id: inviteChild,
       child_name: child?.name || '',
-      invited_email: inviteEmail.trim().toLowerCase(),
+      invited_email: email,
       invited_by: userId,
     })
-    setNotice(error
-      ? (error.message.includes('duplicate') ? 'That email is already invited for this child.' : 'Could not send the invite — check the email address.')
-      : `Invited! When ${inviteEmail.trim()} creates a NeuroNest account with that email (or signs in), the invitation appears on their Account page.`)
+    if (error) {
+      setNotice(error.message.includes('duplicate')
+        ? 'That email is already invited for this child.'
+        : 'Could not save the invite — check the email address.')
+    } else {
+      await sendInviteEmail(inviteChild, email)
+    }
     setInviteEmail('')
     setBusy(false)
     load()
@@ -209,6 +232,12 @@ function AccountContent() {
                         {g.child_name} · {g.status === 'accepted' ? '✅ active' : '⏳ waiting for them to accept'}
                       </div>
                     </div>
+                    {g.status === 'pending' && (
+                      <button onClick={() => sendInviteEmail(g.child_id, g.invited_email)}
+                        className="text-xs font-bold text-violet-600 hover:text-violet-800 px-2 py-2 whitespace-nowrap">
+                        📧 Send email
+                      </button>
+                    )}
                     <button onClick={() => removeGuardian(g.id)} aria-label="Remove"
                       className="text-red-400 hover:text-red-600 px-2 py-2 text-sm">✕</button>
                   </div>

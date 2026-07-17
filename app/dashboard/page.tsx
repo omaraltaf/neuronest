@@ -12,8 +12,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
   const { data: children } = await supabase.from('children')
     .select('*').order('created_at', { ascending: true })
 
-  // No child yet → onboarding
+  // No child yet: an invited guardian must land on their pending invitation, not in
+  // create-a-child onboarding (RLS shows invites addressed to this user's email)
   if (!children || children.length === 0) {
+    const { data: invites } = await supabase.from('child_guardians')
+      .select('id').eq('status', 'pending').limit(1)
+    if (invites && invites.length > 0) {
+      redirect('/account')
+    }
     redirect('/onboarding/child-setup')
   }
 
