@@ -98,7 +98,9 @@ ${JSON.stringify(currentContent, null, 2)}
 The parent has given this feedback:
 "${feedback}"
 
-Revise the material based on their feedback. Keep everything personalised to ${child.name}, keep every concept/emoji/word_class/colour field filled per the same rules as the original (Fitzgerald Key colours by word class; concept = lowercase searchable keyword).${lang === 'no' ? ' Write everything in Norwegian (bokmål), like the original.' : ''}`,
+Revise the material based on their feedback. Keep everything personalised to ${child.name}, keep every concept/emoji/word_class/colour field filled per the same rules as the original (Fitzgerald Key colours by word class; concept = lowercase searchable keyword).${lang === 'no' ? ' Write everything in Norwegian (bokmål), like the original.' : ''}
+
+PICTURES: each symbol image is drawn from a fixed AAC symbol library, keyed by its concept — you do NOT control how a given concept is drawn. So if the parent wants a DIFFERENT picture, change that cell's concept to a different thing that better fits (e.g. "star" → "toy car", "sleep" → "bed"), which pulls a new symbol. You CANNOT restyle the same concept (a 5-point vs 4-point star is the same "star" and will look identical) — never pretend to; if that is all they asked, leave that concept unchanged.`,
         }],
         output_config: { format: { type: 'json_schema', schema: AAC_TYPES[materialType].schema } },
       })

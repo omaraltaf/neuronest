@@ -666,8 +666,17 @@ function ContentViewer({ item, onClose, onRevise, onDelete, onPrint, onGenerateI
             </div>
           ) : (
             <div className="space-y-2">
+              {/* Honest expectation for symbol materials: pictures come from a fixed
+                  library, so Emma can swap WHAT a picture shows but not restyle the SAME
+                  thing (found 2026-07-17: a "5-point not 4-point star" revise silently
+                  returned the identical symbol). */}
+              {(AAC_STUDIO_TYPES.includes(item.content_type as string) || item.content_type === 'flashcard_set') && (
+                <div className="text-[11px] text-gray-400 leading-relaxed px-1">
+                  Emma can change the words, examples and which pictures appear — e.g. &ldquo;use a toy car instead of a star.&rdquo; The pictures come from a fixed symbol library, so she can&apos;t restyle the same one (like a 5-point vs 4-point star).
+                </div>
+              )}
               <textarea value={feedback} onChange={e => setFeedback(e.target.value)}
-                placeholder="e.g. Make it shorter, use dinosaurs instead, add more visual steps, change the colour..."
+                placeholder="e.g. Make it shorter, use dinosaurs instead, swap juice for milk…"
                 rows={2} autoFocus
                 className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-violet-400 transition" />
               <div className="flex gap-2">
