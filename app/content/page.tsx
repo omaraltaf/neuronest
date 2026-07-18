@@ -815,8 +815,14 @@ function ContentContent() {
     load()
   }, [childId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Save a generated piece and open it — shared by both generation paths
+  // Save a generated piece and open it — shared by both generation paths.
+  // Guard against saving an empty/parse-failed shell (the model occasionally wraps its
+  // JSON in prose; the routes now recover it, but never persist a {raw:…} husk either).
   const saveAndOpen = async (contentType: string, content: Record<string, unknown>, goalId: string | null, fallbackTitle: string, materialLang?: string) => {
+    if (!content || content.raw || Object.keys(content).length === 0) {
+      alert('Emma had a hiccup making that one — please tap Make it again.')
+      return null
+    }
     const { data: { user } } = await supabase.auth.getUser()
     const { data: saved } = await supabase.from('generated_content').insert({
       child_id: childId, user_id: user!.id,
@@ -861,12 +867,14 @@ function ContentContent() {
         ? { materialType: contentType, goal, child, goals, language: child.language || 'en' }
         : { goal, child, contentType, language: child.language || 'en', action: 'generate' }),
     })
-    const { content } = await res.json()
+    const { content } = await res.json().catch(() => ({ content: null }))
 
     if (content) {
       const cfg = CONTENT_TYPES.find(t => t.id === contentType)
       await saveAndOpen(contentType, content, goalId,
         `${cfg?.label} — ${(goal?.label as string || '').slice(0, 40)}`)
+    } else {
+      alert('Emma had a hiccup making that one — please try again.')
     }
     setGenerating(false)
     setShowGenerate(false)
@@ -899,9 +907,12 @@ function ContentContent() {
           cfg?.label || 'Material', json.language)
         setClarify(null)
         setClarifyAnswer('')
+      } else {
+        alert('Emma had a hiccup making that one — please try again.')
       }
     } catch (e) {
       console.error('prompt generation failed:', e)
+      alert('Emma had a hiccup making that one — please try again.')
     }
     setGenerating(false)
   }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveModel } from '@/lib/agents/models'
 import { CONTENT_AGENT_PROMPT } from '@/lib/agents/prompts'
-import { TYPE_PROMPTS, VISUAL_INSTRUCTION } from '@/lib/agents/contentTemplates'
+import { TYPE_PROMPTS, VISUAL_INSTRUCTION, parseContentJson } from '@/lib/agents/contentTemplates'
 import { AAC_ROUTER_PROMPT, AAC_ROUTER_SCHEMA, AAC_TYPES, extractConcepts } from '@/lib/agents/aacTemplates'
 
 // AAC Studio (AAC_STUDIO_PLAN.md §4) — the prompt-driven front door for materials.
@@ -241,8 +241,9 @@ Make this genuinely personalised to ${child.name}.
 Return ONLY valid JSON — no markdown, no explanation.`,
         }],
       })
-      const raw = textOf(genRes).replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      content = JSON.parse(raw)
+      const parsed = parseContentJson(textOf(genRes))
+      if (!parsed) return NextResponse.json({ error: 'Generation failed' }, { status: 502 })
+      content = parsed
       if (prompt?.trim()) content.parent_request = prompt.trim()
       fireResolveSymbols(decision.material_type, content, effLang)
     }

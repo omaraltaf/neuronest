@@ -2,6 +2,24 @@
 // generation route (/api/content) and proactive anticipation (§5.3, /api/weekly-focus PATCH).
 // The JSON shapes here are what app/content/page.tsx renders — keep them in sync.
 
+// Robustly extract the material JSON from a model reply. The classic content types
+// aren't schema-constrained, so despite "return ONLY valid JSON" the model sometimes
+// prepends a prose preamble or wraps the JSON in a ```json fence (found 2026-07-17: a
+// flashcard set saved as {raw:"Since Arya's interests weren't provided…```json{…"} and
+// rendered empty). Strip fences first; if that won't parse, recover the outermost
+// {...} object. Returns null when there's genuinely no object — callers must treat
+// null as a failure, never save it.
+export function parseContentJson(text: string): Record<string, unknown> | null {
+  const stripped = (text || '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  try { return JSON.parse(stripped) } catch { /* fall through */ }
+  const first = stripped.indexOf('{')
+  const last = stripped.lastIndexOf('}')
+  if (first >= 0 && last > first) {
+    try { return JSON.parse(stripped.slice(first, last + 1)) } catch { /* give up */ }
+  }
+  return null
+}
+
 export const VISUAL_INSTRUCTION = `
 VISUAL DESIGN REQUIREMENTS (critical — these children are visual learners):
 - Every activity step must start with a relevant emoji that visually represents the action

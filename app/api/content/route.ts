@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveModel } from '@/lib/agents/models'
 import { CONTENT_AGENT_PROMPT } from '@/lib/agents/prompts'
-import { TYPE_PROMPTS, VISUAL_INSTRUCTION } from '@/lib/agents/contentTemplates'
+import { TYPE_PROMPTS, VISUAL_INSTRUCTION, parseContentJson } from '@/lib/agents/contentTemplates'
 import { extractConcepts } from '@/lib/agents/aacTemplates'
 
 // Concept-carrying types get their AAC symbols resolved in the shared per-concept
@@ -75,14 +75,13 @@ Return ONLY valid JSON — no markdown, no explanation.`
 
     const data = await res.json()
     const text = data.content?.find((c: { type: string }) => c.type === 'text')?.text || '{}'
-    try {
-      const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      const parsed = JSON.parse(clean)
-      fireResolveSymbols(contentType, parsed, language || 'en')
-      return NextResponse.json({ content: parsed })
-    } catch {
-      return NextResponse.json({ content: { raw: text }, error: 'Parse failed' })
+    const parsed = parseContentJson(text)
+    if (!parsed) {
+      console.error('Content parse failed; head:', text.slice(0, 200))
+      return NextResponse.json({ content: null, error: 'Parse failed' }, { status: 502 })
     }
+    fireResolveSymbols(contentType, parsed, language || 'en')
+    return NextResponse.json({ content: parsed })
   } catch (err) {
     console.error('Content generation error:', err)
     return NextResponse.json({ content: {}, error: 'Generation failed' }, { status: 500 })
