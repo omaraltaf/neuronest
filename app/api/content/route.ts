@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   if (action === 'revise' && currentContent && feedback) {
     // Feedback revision
-    prompt = `You are Emma Blackwell, SEN teacher and content specialist.
+    prompt = `You are Emma Blackwell — NeuroNest's AI materials maker.
 
 You created this content for ${child.name}:
 ${JSON.stringify(currentContent, null, 2)}

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import TabBar from '@/components/TabBar'
 import PracticeLogger from '@/components/PracticeLogger'
 import StatusProposals from '@/components/StatusProposals'
+import PersonaTag from '@/components/PersonaTag'
 
 // Goals as a staged journey, not a wall (field feedback 2026-07-06): parents work on
 // 1-2 goals at a time ("Working on now"), the rest wait in "Up next", achieved goals
@@ -123,7 +124,7 @@ function GoalProposalCard({ proposal, sourceGoalLabel, child, onResolved }: {
         <span className="text-2xl">🏆</span>
         <div className="flex-1 min-w-0">
           <div className="text-xs font-bold text-emerald-100 uppercase tracking-wide">
-            &ldquo;{sourceGoalLabel}&rdquo; achieved · Dr. Eriksson — your guide — suggests
+            &ldquo;{sourceGoalLabel}&rdquo; achieved · <PersonaTag persona="eriksson" /> suggests
           </div>
           <div className="font-black text-base mt-0.5">{goal.label as string}</div>
           {(data.celebration_message as string) && (
@@ -363,7 +364,7 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
             <div className="font-black text-sm text-gray-900">Plan</div>
-            <div className="text-xs text-gray-400">{childName}&apos;s journey · Dr. Eriksson — your guide</div>
+            <div className="text-xs text-gray-400">{childName}&apos;s journey · <PersonaTag persona="eriksson" /></div>
           </div>
           <div className="text-sm font-bold text-violet-600 bg-violet-50 px-3 py-1.5 rounded-full">
             {achievedGoals.length}/{goals.length} achieved
@@ -486,7 +487,7 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
             {/* Last check-in */}
             <div className="px-4 py-3.5 border-b border-gray-50">
               <div className="flex items-center justify-between mb-1">
-                <div className="text-sm font-bold text-gray-800">Weekly chat with Dr. Eriksson — your guide</div>
+                <div className="text-sm font-bold text-gray-800">Weekly chat with <PersonaTag persona="eriksson" /></div>
                 <Link href={`/checkin?child=${childId}`} className="text-sm text-violet-600 font-semibold py-1 flex-shrink-0">
                   {latestCheckin ? 'Open →' : 'Start →'}
                 </Link>

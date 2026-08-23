@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { PLANNING_AGENT_PROMPT, buildChildContext } from '@/lib/agents/prompts'
 import type { Child, ChildProfile, ChatMessage } from '@/types'
 import AgentText from '@/components/AgentText'
+import PersonaTag from '@/components/PersonaTag'
 
 const AREA_COLORS: Record<string, string> = {
   communication: '#D55E38', social: '#4A6FA5', sensory: '#7C9885',
@@ -347,8 +348,8 @@ Open by acknowledging what you already know about their main concerns, then pres
         <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">👩‍💼</div>
           <div>
-            <div className="text-sm font-bold text-gray-900">Dr. Lena Eriksson</div>
-            <div className="text-xs text-gray-400">Builds the goal plan · BCBA-D</div>
+            <div className="text-sm font-bold text-gray-900"><PersonaTag persona="eriksson" full /></div>
+            <div className="text-xs text-gray-400">Builds the goal plan</div>
           </div>
         </div>
 

@@ -10,6 +10,7 @@ import {
   ComprehensionViewer, NumberCardsViewer, RewardChartViewer, WordWallViewer, MatchingGameViewer,
   useAacSymbols,
 } from './aacViewers'
+import PersonaTag from '@/components/PersonaTag'
 
 const CONTENT_TYPES = [
   { id: 'social_story',   icon: '📖', label: 'Social Story',     desc: 'Personalised story with emoji sentences' },
@@ -1008,7 +1009,7 @@ function ContentContent() {
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
             <div>
               <div className="font-black text-sm text-gray-900">Materials</div>
-              <div className="text-xs text-gray-400">Emma — makes your materials</div>
+              <div className="text-xs text-gray-400"><PersonaTag persona="emma" /></div>
             </div>
             <div className="flex items-center gap-2">
               {contentItems.length > 1 && (
@@ -1147,7 +1148,7 @@ function ContentContent() {
             return (
               <div className="bg-white rounded-2xl border border-violet-100 p-4 shadow-sm">
                 <div className="text-sm font-black text-gray-900">Recommended for this week</div>
-                <div className="text-xs text-gray-400 mb-3">Emma — makes your materials — suggests these for the goals you&apos;re working on</div>
+                <div className="text-xs text-gray-400 mb-3"><PersonaTag persona="emma" /> suggests these for the goals you&apos;re working on</div>
                 <div className="space-y-2">
                   {recs.map((r, i) => (
                     <button key={i} onClick={() => handleGenerate(r.goal.id as string, r.type)}

@@ -243,6 +243,18 @@ function AccountContent() {
           </Link>
         </div>
 
+        {/* Who you're talking to — the disclosure page, reachable without hunting */}
+        <Link href="/guides"
+          className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 hover:border-violet-200 transition">
+          <div className="flex-1">
+            <div className="font-bold text-sm text-gray-900">Who you&apos;re talking to</div>
+            <div className="text-xs text-gray-400 mt-0.5">
+              Dr. Eriksson, Emma and Sunny are AI guides — what they are, and what they are not for
+            </div>
+          </div>
+          <span className="text-gray-300">›</span>
+        </Link>
+
         {/* Family sharing — only for children this account owns */}
         {ownedChildren.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 p-4">

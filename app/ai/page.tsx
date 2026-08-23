@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import TabBar from '@/components/TabBar'
 import AgentText from '@/components/AgentText'
+import Link from 'next/link'
 import type { ChatMessage } from '@/types'
 
 // Ask is a growing knowledge base, not a throwaway chat: every exchange persists to
@@ -196,7 +197,10 @@ function AIChatContent() {
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">💬</div>
           <div className="flex-1">
             <div className="font-black text-sm text-gray-900">Ask</div>
-            <div className="text-xs text-gray-400">Any question about {childName || 'your child'}&apos;s programme</div>
+            <div className="text-xs text-gray-400">
+              Any question about {childName || 'your child'}&apos;s programme ·{' '}
+              <Link href="/guides" className="font-bold underline underline-offset-2">AI, not your care team</Link>
+            </div>
           </div>
           <button onClick={() => { setShowSearch(s => !s); setSearch(''); setSearchRange('all') }}
             aria-label="Search past questions"

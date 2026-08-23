@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Bell, Settings } from 'lucide-react'
 import TabBar from '@/components/TabBar'
 import PracticeLogger from '@/components/PracticeLogger'
+import PersonaTag from '@/components/PersonaTag'
 
 // "Today" (UX_PLAN.md P1): one screen, one question — what should I do right now?
 // Hero = this week's focus with the practice loop built in. One contextual banner
@@ -74,7 +75,7 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
         <span className="text-2xl">🎯</span>
         <div className="flex-1">
           <div className="font-bold text-sm text-gray-900">This week&apos;s focus</div>
-          <div className="text-sm text-gray-400">Dr. Eriksson — your guide — hasn&apos;t planned this week yet</div>
+          <div className="text-sm text-gray-400"><PersonaTag persona="eriksson" /> hasn&apos;t planned this week yet</div>
         </div>
         <button onClick={generate} disabled={generating}
           className="text-sm font-bold px-4 py-3 rounded-full bg-violet-600 text-white hover:bg-violet-700 transition disabled:opacity-50 min-h-[44px]">
@@ -95,7 +96,7 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
 
   return (
     <div className="bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-3xl px-5 py-5 shadow-md shadow-violet-200">
-      <div className="text-xs font-bold text-marigold-300 uppercase tracking-wide">This week&apos;s step in the plan · Dr. Eriksson — your guide</div>
+      <div className="text-xs font-bold text-marigold-300 uppercase tracking-wide">This week&apos;s step in the plan · <PersonaTag persona="eriksson" /></div>
       <div className="font-black text-lg mt-1 leading-snug">{data.focus_title as string}</div>
       {focusGoals.length > 0 && (
         <Link href={`/goals?child=${childId}`} className="mt-2 flex flex-wrap gap-1.5">
@@ -427,7 +428,7 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
             <span className="text-2xl">🏆</span>
             <div className="flex-1">
               <div className="font-bold text-sm">A goal was achieved — the next step is ready</div>
-              <div className="text-sm text-emerald-100">Dr. Eriksson drafted it · one tap to add</div>
+              <div className="text-sm text-emerald-100"><PersonaTag persona="eriksson" /> drafted it · one tap to add</div>
             </div>
             <span className="text-white/70">›</span>
           </Link>
@@ -437,7 +438,7 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
             <span className="text-2xl">📊</span>
             <div className="flex-1">
               <div className="font-bold text-sm text-gray-900">Time for your weekly chat</div>
-              <div className="text-sm text-gray-400">Dr. Eriksson — your guide · ~15 min</div>
+              <div className="text-sm text-gray-400"><PersonaTag persona="eriksson" /> · ~15 min</div>
             </div>
             <span className="text-gray-300">›</span>
           </Link>

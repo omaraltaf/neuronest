@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
+import PersonaTag from '@/components/PersonaTag'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -256,7 +257,7 @@ function AboutChildContent() {
           <div className="bg-white rounded-2xl border border-gray-100 p-4">
             <div className="text-[10px] font-black text-gray-400 uppercase tracking-wide">Profile</div>
             <div className="text-xs text-gray-400 mb-2">
-              Dr. Eriksson — {name}&apos;s profiler · confirmed by you{profileDate ? ` · ${new Date(profileDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+              <PersonaTag persona="eriksson" /> · confirmed by you{profileDate ? ` · ${new Date(profileDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
             </div>
             {SECTION_META.filter(s => profile[s.key]).map(s => (
               <div key={s.key} className="border-b border-gray-50 last:border-0">

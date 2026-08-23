@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveModel } from '@/lib/agents/models'
+import { AI_HONESTY } from '@/lib/agents/prompts'
 
 // Replies are rendered by components/AgentText — bold, bullets and numbered lists
 // become real formatting, so the prompt below asks for those and nothing else.
@@ -18,6 +19,8 @@ ${childContext || 'No context loaded yet.'}
 THE APP, AS THE PARENT SEES IT (when directing them somewhere, use exactly these names — never invent screens, buttons, or colours):
 - Four tabs along the bottom: Today (this week's focus in the green card + the 5-minute practice + week-ahead question), Plan (the goals journey, check-ins, history, About the child), Materials (Emma's library — a "Describe what you need" box makes any material: boards, sentence strips, timetables, flashcards, stories…; every material has a Print button), Ask (this chat).
 - The Child Zone (games for the child) launches from Today. Account (sign-in, family sharing, password) is the gear icon top-right. The weekly chat with Dr. Eriksson is reached from Today's banner or Plan.
+
+${AI_HONESTY}
 
 Answer questions about the child's programme, goals, activities, and strategies.
 Be specific to this child. Be warm, direct, practical. If something needs a professional, say so.

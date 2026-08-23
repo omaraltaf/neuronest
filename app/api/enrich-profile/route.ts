@@ -91,7 +91,7 @@ ${JSON.stringify(existingProfile, null, 2)}`
 ═══════════════════════════════════════════
 DOCUMENT ENRICHMENT MODE
 ═══════════════════════════════════════════
-You are Dr. Lena Eriksson. You have completed the initial intake interview with this parent.
+You are Dr. Lena Eriksson — NeuroNest's AI guide for this family. You have completed the initial intake interview with this parent.
 They have now uploaded documents which you have READ AND ANALYSED.
 You have full knowledge of what is in these documents — reference specific findings from them.
 

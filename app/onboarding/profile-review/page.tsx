@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { buildChildContext } from '@/lib/agents/prompts'
 import type { Child, ChatMessage } from '@/types'
 import AgentText from '@/components/AgentText'
+import PersonaTag from '@/components/PersonaTag'
 
 interface ProfileSection {
   key: string
@@ -199,7 +200,7 @@ function SectionChat({
             👩‍⚕️
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-bold text-sm text-gray-900">Dr. Lena Eriksson</div>
+            <div className="font-bold text-sm text-gray-900"><PersonaTag persona="eriksson" full /></div>
             <div className="text-xs text-gray-400 truncate">
               Discussing: {section.icon} {section.title}
             </div>
@@ -728,7 +729,7 @@ function ProfileContent() {
             <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm">👩‍⚕️</div>
               <div>
-                <div className="text-sm font-bold text-gray-900">Dr. Lena Eriksson</div>
+                <div className="text-sm font-bold text-gray-900"><PersonaTag persona="eriksson" full /></div>
                 <div className="text-xs text-gray-400">Follow-up questions from your documents</div>
               </div>
             </div>

@@ -6,6 +6,7 @@ import { INTAKE_AGENT_PROMPT, buildChildContext } from '@/lib/agents/prompts'
 import { cleanAgentResponse, extractConfidenceUpdate } from '@/lib/agents/caller'
 import type { ChatMessage, DomainConfidence, Child } from '@/types'
 import AgentText from '@/components/AgentText'
+import PersonaTag, { PersonaDisclosure } from '@/components/PersonaTag'
 
 const DOMAIN_LABELS: Record<keyof DomainConfidence, string> = {
   communication: 'Communication',
@@ -275,12 +276,16 @@ function IntakeContent() {
           <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm flex-shrink-0">👩‍⚕️</div>
             <div>
-              <div className="text-sm font-bold text-gray-900">Dr. Lena Eriksson</div>
-              <div className="text-xs text-gray-400">Gets to know your child · Clinical Psychologist</div>
+              <div className="text-sm font-bold text-gray-900"><PersonaTag persona="eriksson" full /></div>
+              <div className="text-xs text-gray-400">Gets to know your child</div>
             </div>
             <div className="ml-auto text-xs font-bold text-violet-600 bg-violet-50 px-2 py-1 rounded-full">
               {overallConfidence}% understood
             </div>
+          </div>
+          {/* Said once, properly, where the relationship is formed */}
+          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+            <PersonaDisclosure persona="eriksson" className="text-gray-500" />
           </div>
 
           {/* Messages */}

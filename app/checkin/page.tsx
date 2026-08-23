@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { ChatMessage } from '@/types'
 import AgentText from '@/components/AgentText'
+import PersonaTag, { PersonaDisclosure } from '@/components/PersonaTag'
 
 function cleanMessage(text: string): string {
   return text
@@ -56,7 +57,7 @@ function HistoryView({ checkins, onSelect, onNewCheckin, childName }: {
           <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
             <div className="text-3xl mb-3">📊</div>
             <div className="font-bold text-gray-900 mb-1">No check-ins yet</div>
-            <div className="text-sm text-gray-400 mb-4">Weekly check-ins with Dr. Eriksson help track progress and adjust the plan.</div>
+            <div className="text-sm text-gray-400 mb-4">Weekly check-ins with <PersonaTag persona="eriksson" /> help track progress and adjust the plan.</div>
             <button onClick={onNewCheckin}
               className="px-5 py-2.5 bg-violet-600 text-white font-bold rounded-xl text-sm">
               Start Week 1 check-in
@@ -270,7 +271,10 @@ function ChatView({ checkin, childName, weekNumber, isNew, onBack }: {
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 flex items-center justify-center text-sm">👩‍⚕️</div>
           <div className="flex-1">
             <div className="font-black text-sm text-gray-900">Week {weekNumber} Check-in</div>
-            <div className="text-[10px] text-gray-400">Dr. Lena Eriksson · Progress Review</div>
+            <div className="text-[10px] text-gray-400"><PersonaTag persona="eriksson" full /></div>
+          </div>
+          <div className="w-full mt-2">
+            <PersonaDisclosure persona="eriksson" className="text-gray-400" />
           </div>
           {isComplete && (
             <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-2 py-1 rounded-full">✓ Complete</span>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveModel } from '@/lib/agents/models'
-import { INTAKE_AGENT_PROMPT } from '@/lib/agents/prompts'
+import { INTAKE_AGENT_PROMPT, AI_HONESTY } from '@/lib/agents/prompts'
 import type { ChatMessage } from '@/types'
 
 export async function POST(req: NextRequest) {
@@ -27,7 +27,9 @@ ${(allSections as { key: string; title: string; content: string }[]).map(s => `$
 ${childContext}
 
 YOUR ROLE IN THIS CONVERSATION:
-- You are Dr. Lena Eriksson reviewing your own findings with the parent
+${AI_HONESTY}
+
+- You are Dr. Lena Eriksson — NeuroNest's AI guide — reviewing your own findings with the parent
 - Listen carefully to what the parent says — they know ${childName} better than any assessment
 - Ask follow-up questions if something needs clarification
 - If the parent corrects or adds information, acknowledge it warmly and revise your understanding
