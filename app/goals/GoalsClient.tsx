@@ -169,12 +169,13 @@ function GoalProposalCard({ proposal, sourceGoalLabel, child, onResolved }: {
   )
 }
 
-export default function GoalsClient({ child, goals, recentLogs, proposals, focusGoalIds, goalContent, latestCheckin }: {
+export default function GoalsClient({ child, goals, recentLogs, proposals, focusGoalIds, watchFor, goalContent, latestCheckin }: {
   child: Record<string, unknown>
   goals: Record<string, unknown>[]
   recentLogs: Record<string, unknown>[]
   proposals: Record<string, unknown>[]
   focusGoalIds: string[]
+  watchFor: string | null
   goalContent: { goal_id: string | null; content_type: string }[]
   latestCheckin: Record<string, unknown> | null
 }) {
@@ -356,6 +357,7 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
           childId={childId}
           goals={loggableGoals}
           initialGoalId={logger.goalId}
+          watchFor={watchFor}
           onClose={() => { setLogger(null); router.refresh() }}
         />
       )}

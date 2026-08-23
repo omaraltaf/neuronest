@@ -68,6 +68,7 @@ HARD RULES:
 - primary_goal_ids must be UUIDs copied exactly from the ACTIVE GOALS data. 1-2 goals maximum.
 - Never repeat the previous week's focus verbatim; either progress it one step or pivot with a stated reason.
 - Language: match the family's language preference. Warm, specific, zero clinical jargon (say "wait 5 seconds before helping" not "constant time delay").
+- watch_for is shown to the parent inside the practice logger, right above the note box. It must therefore be something they can NOTICE during a five-minute practice and jot in that note. Never tell them to "write down", "keep a diary", "track", or "record" anything anywhere else — there is no such place in the app, and asking for one destroys trust. Phrase it as a thing to notice: "Notice which spot gets her talking most — bubbles, bath or kitchen."
 - notification_body must be under 200 characters and standalone-readable: "This week: [focus] because [reason]. [starter hook]".
 - WHEN TRIGGERED BY A JUST-COMPLETED CHECK-IN (the data will say so): the parent literally just told you these things minutes ago — reflect the check-in visibly in focus_reason ("you just told me…") so they feel heard. REFINE or progress the current focus in its light rather than pivoting wildly mid-week; if the check-in genuinely demands a change of direction, make it and say it came from today's conversation.
 
@@ -123,7 +124,7 @@ const FOCUS_SCHEMA = {
         },
       },
     },
-    watch_for: { type: 'string', description: 'One thing to observe and note this week' },
+    watch_for: { type: 'string', description: 'One thing to NOTICE during practice, recordable in the practice-log note' },
     week_ahead_question: { type: 'string', description: 'One warm question about the upcoming week to surface naturalistic opportunities' },
     notification_body: { type: 'string', description: 'Push-style summary under 200 chars' },
     pattern_insight: { type: 'string', description: 'Named pattern across low-rated sessions as a coaching insight, or empty string if none' },

@@ -184,6 +184,7 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
           goals={goals}
           initialGoalId={primaryGoalId}
           activityTitle={(activity?.title as string) || undefined}
+          watchFor={(data.watch_for as string) || null}
           onClose={() => { setShowLogger(false); router.refresh() }}
         />
       )}

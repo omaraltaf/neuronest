@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import PersonaTag from '@/components/PersonaTag'
 
 // Universal quick-log (UX_PLAN.md P1/P3): bottom sheet — pick goal (or arrive with one),
 // rate 1-5, optional note, save. A hard session (rating 1-2) flows straight into
@@ -9,11 +10,16 @@ import { createClient } from '@/lib/supabase/client'
 type Goal = { id: string; label: string }
 type Coaching = { empathy: string; follow_up_question: string; technique_adjustment: string; pattern_insight: string }
 
-export default function PracticeLogger({ childId, goals, initialGoalId, activityTitle, onClose, onLogged }: {
+export default function PracticeLogger({ childId, goals, initialGoalId, activityTitle, watchFor, onClose, onLogged }: {
   childId: string
   goals: Goal[]
   initialGoalId?: string | null
   activityTitle?: string
+  // This week's watch_for, surfaced where the observation can actually be written
+  // (2026-08-23, field feedback: "Watch for: write down her first two-word phrase" —
+  // but there was nowhere to write). session_logs.notes is that home, and the weekly
+  // planner already mines notes for pattern_insight; the two were simply never joined.
+  watchFor?: string | null
   onClose: () => void
   onLogged?: () => void
 }) {
@@ -119,8 +125,15 @@ export default function PracticeLogger({ childId, goals, initialGoalId, activity
               </div>
             </div>
 
+            {watchFor && (
+              <div className="bg-violet-50 border border-violet-100 rounded-xl px-3.5 py-2.5 mb-2">
+                <div className="text-xs font-bold text-violet-700">👀 Watching for this week</div>
+                <div className="text-sm text-violet-800 leading-relaxed mt-0.5">{watchFor}</div>
+              </div>
+            )}
             <textarea value={note} onChange={e => setNote(e.target.value)}
-              placeholder="Anything to remember? (optional)" rows={2}
+              placeholder={watchFor ? 'Notice anything? Even a few words help (optional)' : 'Anything to remember? (optional)'}
+              rows={2}
               className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-violet-400 transition mb-4" />
 
             <button onClick={save} disabled={saving || !rating}
@@ -142,7 +155,7 @@ export default function PracticeLogger({ childId, goals, initialGoalId, activity
             <div className="flex items-center gap-2 mb-3">
               <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-lg">👩‍⚕️</div>
               <div>
-                <div className="text-sm font-bold text-gray-900">Dr. Eriksson</div>
+                <div className="text-sm font-bold text-gray-900"><PersonaTag persona="eriksson" /></div>
                 <div className="text-xs text-gray-400">your guide</div>
               </div>
             </div>
