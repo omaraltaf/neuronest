@@ -7,9 +7,11 @@ import TabBar from '@/components/TabBar'
 import PracticeLogger from '@/components/PracticeLogger'
 import PersonaTag from '@/components/PersonaTag'
 
-// "Today" (UX_PLAN.md P1): one screen, one question — what should I do right now?
-// Hero = this week's focus with the practice loop built in. One contextual banner
-// maximum. Child Zone launcher. Everything else lives in the bottom tabs.
+// "Today" (UX_PLAN P1, subtracted in Round 3): one screen, one question — what should
+// I do right now? The hero carries THREE things — what this week is, the action, and
+// how it's going — with everything else behind one "More". One contextual banner
+// maximum. Child Zone is a quiet door for the child. Everything else is in the tabs.
+// Do not add a fourth thing to the hero; the whole round was about taking them out.
 
 function mondayOf(d: Date): string {
   const daysSinceMonday = (d.getUTCDay() + 6) % 7
@@ -28,12 +30,9 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
 }) {
   const router = useRouter()
   const [showStarter, setShowStarter] = useState(false)
-  const [showPlan, setShowPlan] = useState(false)
+  const [showMore, setShowMore] = useState(false)
   const [showLogger, setShowLogger] = useState(false)
   const [generating, setGenerating] = useState(false)
-  const [weekAnswer, setWeekAnswer] = useState('')
-  const [sendingAnswer, setSendingAnswer] = useState(false)
-  const [answerResult, setAnswerResult] = useState<{ title: string; opportunity: string } | null>(null)
 
   const isCurrentWeek = focus && (focus.week_start as string) === mondayOf(new Date())
   const data = (focus?.focus_data || null) as Record<string, unknown> | null
@@ -52,23 +51,6 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
     }
   }
 
-  const sendWeekAnswer = async () => {
-    if (!weekAnswer.trim()) return
-    setSendingAnswer(true)
-    try {
-      const res = await fetch('/api/weekly-focus', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ childId, answer: weekAnswer.trim() }),
-      })
-      const result = await res.json()
-      if (result.generated) setAnswerResult(result.generated)
-      router.refresh()
-    } finally {
-      setSendingAnswer(false)
-    }
-  }
-
   if (!isCurrentWeek || !data) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 px-4 py-4 flex items-center gap-3">
@@ -78,7 +60,7 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
           <div className="text-sm text-gray-400"><PersonaTag persona="eriksson" /> hasn&apos;t planned this week yet</div>
         </div>
         <button onClick={generate} disabled={generating}
-          className="text-sm font-bold px-4 py-3 rounded-full bg-violet-600 text-white hover:bg-violet-700 transition disabled:opacity-50 min-h-[44px]">
+          className="text-sm font-bold px-4 py-3 rounded-full bg-marigold-400 text-marigold-ink hover:bg-marigold-500 transition disabled:opacity-50 min-h-[44px]">
           {generating ? 'Planning… ~1 min' : 'Plan this week'}
         </button>
       </div>
@@ -90,42 +72,30 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
   const embeds = (data.embed_opportunities || []) as Record<string, string>[]
   const primaryGoalIds = (data.primary_goal_ids || []) as string[]
   const primaryGoalId = primaryGoalIds[0] || null
-  // The thread to the plan, made visible (field feedback 2026-07-13): the focus is
-  // this week's step INSIDE the plan — show which goal(s) it serves
   const focusGoals = goals.filter(g => primaryGoalIds.includes(g.id))
+
+  // Round 3 (P2): the card carried twelve things and a parent scanning at 21:40 read
+  // none of them. It now carries three — what this week is, the action, and how it's
+  // going — and everything else waits behind one "More". The week-ahead question moved
+  // to the check-in, where the parent is already reflecting (see UX_PLAN Round 3).
+  const reason = (data.focus_reason as string) || ''
+  // No lookbehind — older mobile Safari does not support it, and this renders on a phone
+  const firstSentence = (reason.match(/^[^.!?]*[.!?]/) || [reason])[0].trim()
+  const hasMoreReason = firstSentence.length < reason.length
 
   return (
     <div className="bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-3xl px-5 py-5 shadow-md shadow-violet-200">
-      <div className="text-xs font-bold text-marigold-300 uppercase tracking-wide">This week&apos;s step in the plan · <PersonaTag persona="eriksson" /></div>
+      <div className="text-xs font-bold text-marigold-300 uppercase tracking-wide">This week · <PersonaTag persona="eriksson" /></div>
       <div className="font-black text-lg mt-1 leading-snug">{data.focus_title as string}</div>
-      {focusGoals.length > 0 && (
-        <Link href={`/goals?child=${childId}`} className="mt-2 flex flex-wrap gap-1.5">
-          {focusGoals.map(g => (
-            <span key={g.id} className="inline-flex items-center gap-1 bg-white/15 rounded-full px-3 py-1.5 text-xs font-bold text-violet-50">
-              🎯 {g.label} ›
-            </span>
-          ))}
-        </Link>
-      )}
-      <p className="text-sm text-violet-100 mt-2 leading-relaxed">{data.focus_reason as string}</p>
-      {(data.celebrate as string) && (
-        <p className="text-sm text-violet-100 mt-2 leading-relaxed">🌟 {data.celebrate as string}</p>
-      )}
+      <p className="text-sm text-violet-100 mt-1.5 leading-relaxed">{firstSentence}</p>
 
-      {/* The practice loop, right here — the ACTION is the headline (Round 2):
-          a busy parent wants "do this now", not a title to interpret */}
-      <div className="mt-4 flex gap-2">
-        <button onClick={() => setShowStarter(s => !s)}
-          className="flex-1 py-3.5 px-3 rounded-2xl bg-marigold-400 text-marigold-ink font-black text-sm leading-snug active:scale-95 transition min-h-[48px] text-left">
-          {practisedToday
-            ? '✓ Practised today · again?'
-            : <>▶ Today&apos;s 5 minutes{activity ? <span className="font-bold">: {activity.title as string}</span> : null}</>}
-        </button>
-        <button onClick={() => setShowPlan(p => !p)}
-          className="px-4 py-3.5 rounded-2xl bg-white/15 hover:bg-white/25 font-bold text-sm transition min-h-[48px] flex-shrink-0">
-          {showPlan ? 'Less ↑' : 'Full plan ↓'}
-        </button>
-      </div>
+      {/* The action, and only the action */}
+      <button onClick={() => setShowStarter(s => !s)}
+        className="mt-4 w-full py-3.5 px-4 rounded-2xl bg-marigold-400 text-marigold-ink font-black text-sm leading-snug active:scale-95 transition min-h-[52px] text-left">
+        {practisedToday
+          ? '✓ Practised today · go again?'
+          : <>▶ Today&apos;s 5 minutes{activity ? <span className="font-bold">: {activity.title as string}</span> : null}</>}
+      </button>
 
       {showStarter && activity && (
         <div className="mt-3 bg-white/10 rounded-2xl p-4">
@@ -144,31 +114,36 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
         </div>
       )}
 
-      {/* Week-ahead question surfaces on the card until answered (Round 2) — buried in
-          "Full plan" it starves the content-anticipation loop. One sentence from the
-          parent = materials prepared before real events + a grounded plan next Monday. */}
-      {!showPlan && (data.week_ahead_question as string) && !(data.week_ahead_answer as string) && !answerResult && (
-        <div className="mt-3 bg-white/10 rounded-2xl p-4">
-          <div className="text-sm text-violet-50 leading-relaxed">💬 {data.week_ahead_question as string}</div>
-          <div className="mt-2 flex gap-2">
-            <input value={weekAnswer} onChange={e => setWeekAnswer(e.target.value)}
-              placeholder="One sentence is plenty…"
-              className="flex-1 px-3.5 py-3 rounded-xl text-sm text-gray-800 bg-white/90 placeholder-gray-400 focus:outline-none" />
-            <button onClick={sendWeekAnswer} disabled={sendingAnswer || !weekAnswer.trim()}
-              className="text-sm font-bold px-4 py-3 rounded-xl bg-white text-violet-700 disabled:opacity-50 transition min-h-[44px]">
-              {sendingAnswer ? '…' : 'Send'}
-            </button>
-          </div>
-        </div>
-      )}
-      {!showPlan && answerResult && (
-        <div className="mt-3 bg-white/10 rounded-2xl p-4 text-sm text-violet-50 leading-relaxed">
-          ✨ Thanks! Emma prepared <span className="font-bold">&ldquo;{answerResult.title}&rdquo;</span> for {answerResult.opportunity} — it&apos;s in Materials.
-        </div>
-      )}
+      {/* Logging must not hide behind a button labelled "start the activity" (Round 3):
+          a parent who practised at breakfast and logs at lunch needs a plain door. */}
+      <div className="mt-2 flex gap-2">
+        <button onClick={() => setShowLogger(true)}
+          className="flex-1 py-3 rounded-2xl bg-white/15 hover:bg-white/25 font-bold text-sm transition min-h-[44px]">
+          Log practice
+        </button>
+        <button onClick={() => setShowMore(m => !m)}
+          className="px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/20 font-bold text-sm transition min-h-[44px]">
+          {showMore ? 'Less' : 'More'}
+        </button>
+      </div>
 
-      {showPlan && (
+      {showMore && (
         <div className="mt-3 space-y-3">
+          {hasMoreReason && (
+            <p className="text-sm text-violet-100 leading-relaxed">{reason}</p>
+          )}
+          {focusGoals.length > 0 && (
+            <Link href={`/goals?child=${childId}`} className="flex flex-wrap gap-1.5">
+              {focusGoals.map(g => (
+                <span key={g.id} className="inline-flex items-center gap-1 bg-white/15 rounded-full px-3 py-1.5 text-xs font-bold text-violet-50">
+                  🎯 {g.label} ›
+                </span>
+              ))}
+            </Link>
+          )}
+          {(data.celebrate as string) && (
+            <p className="text-sm text-violet-100 leading-relaxed">🌟 {data.celebrate as string}</p>
+          )}
           {tip && (
             <div className="bg-white/10 rounded-2xl p-4">
               <div className="text-sm font-bold">💡 Technique of the week: {tip.technique}</div>
@@ -195,32 +170,9 @@ function WeeklyFocusCard({ childId, focus, goals, streak, achievedCount, totalGo
           {(data.watch_for as string) && (
             <div className="text-sm text-violet-100">👀 Watch for: {data.watch_for as string}</div>
           )}
-          {(data.week_ahead_question as string) && (
-            <div className="bg-white/10 rounded-2xl p-4">
-              <div className="text-sm text-violet-50 leading-relaxed">💬 {data.week_ahead_question as string}</div>
-              {answerResult ? (
-                <div className="mt-2 text-sm text-violet-50 leading-relaxed">
-                  ✨ Thanks! Emma prepared <span className="font-bold">&ldquo;{answerResult.title}&rdquo;</span> for {answerResult.opportunity} — it&apos;s in Materials.
-                </div>
-              ) : (data.week_ahead_answer as string) ? (
-                <div className="mt-2 text-sm text-violet-200 italic">You said: &ldquo;{data.week_ahead_answer as string}&rdquo;</div>
-              ) : (
-                <div className="mt-2 flex gap-2">
-                  <input value={weekAnswer} onChange={e => setWeekAnswer(e.target.value)}
-                    placeholder="One sentence is plenty…"
-                    className="flex-1 px-3.5 py-3 rounded-xl text-sm text-gray-800 bg-white/90 placeholder-gray-400 focus:outline-none" />
-                  <button onClick={sendWeekAnswer} disabled={sendingAnswer || !weekAnswer.trim()}
-                    className="text-sm font-bold px-4 py-3 rounded-xl bg-white text-violet-700 disabled:opacity-50 transition min-h-[44px]">
-                    {sendingAnswer ? '…' : 'Send'}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
 
-      {/* Momentum line — replaces the old stat tiles */}
       <div className="mt-4 pt-3 border-t border-white/15 text-sm text-violet-100">
         {streak > 0 ? `🔥 ${streak} day${streak > 1 ? 's' : ''} in a row` : '🌱 Ready for today'}
         {totalGoals > 0 && <> · ✅ {achievedCount} of {totalGoals} goals achieved</>}
@@ -444,12 +396,17 @@ export default function DashboardClient({ child, appState, goals, todayLogs, str
           </Link>
         ) : null}
 
-        {/* Child Zone launcher — the one destination not in the tabs */}
+        {/* Child Zone launcher — the one destination not in the tabs. Deliberately
+            normal weight since Round 3: it is a door for the CHILD, not a task for the
+            parent, and at full gradient it outshouted the one thing they came to do. */}
         <Link href={`/child-zone?child=${childId}`}
-          className="block rounded-3xl p-5 bg-gradient-to-br from-amber-400 to-orange-400 active:scale-[0.98] transition shadow-lg text-center">
-          <div className="text-5xl mb-1.5">✨</div>
-          <div className="font-black text-white text-lg">{childName}&apos;s Zone</div>
-          <div className="text-sm text-white/80">Games & words made just for {childName}</div>
+          className="block rounded-2xl border border-clay-200 bg-clay-50 px-4 py-3.5 flex items-center gap-3 active:scale-[0.99] transition">
+          <span className="text-2xl">✨</span>
+          <div className="flex-1">
+            <div className="font-bold text-sm text-clay-700">{childName}&apos;s Zone</div>
+            <div className="text-sm text-clay-600/80">Games &amp; words made just for {childName}</div>
+          </div>
+          <span className="text-clay-400">›</span>
         </Link>
       </div>
 
