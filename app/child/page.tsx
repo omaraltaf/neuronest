@@ -80,12 +80,14 @@ function AboutChildContent() {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [interestsDraft, setInterestsDraft] = useState('')
+  const [latestCheckin, setLatestCheckin] = useState<Record<string, unknown> | null>(null)
+  const [recentLogs, setRecentLogs] = useState<Record<string, unknown>[]>([])
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!childId) return
     const load = async () => {
-      const [{ data: c }, { data: p }, { data: docs }, { data: evts }] = await Promise.all([
+      const [{ data: c }, { data: p }, { data: docs }, { data: evts }, { data: chk }, { data: lgs }] = await Promise.all([
         supabase.from('children').select('*').eq('id', childId).single(),
         supabase.from('child_profiles').select('profile_data, created_at')
           .eq('child_id', childId).eq('is_current', true).maybeSingle(),
@@ -94,11 +96,19 @@ function AboutChildContent() {
         supabase.from('family_events').select('*')
           .eq('child_id', childId).eq('active', true)
           .order('event_date', { ascending: true, nullsFirst: false }),
+        // Records moved here from Plan (Round 3 P5) — Plan is the journey, this is the file
+        supabase.from('weekly_checkins').select('week_number, wins, recommendations, completed_at')
+          .eq('child_id', childId).not('completed_at', 'is', null)
+          .order('completed_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('session_logs').select('id, activity_title, rating, logged_at')
+          .eq('child_id', childId).order('logged_at', { ascending: false }).limit(5),
       ])
       if (c) setChild(c)
       if (p) { setProfile(p.profile_data as Record<string, unknown>); setProfileDate(p.created_at as string) }
       setDocuments(docs || [])
       setEvents(evts || [])
+      setLatestCheckin(chk as Record<string, unknown> | null)
+      setRecentLogs(lgs || [])
     }
     load()
   }, [childId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -356,6 +366,59 @@ function AboutChildContent() {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* History & records — moved off Plan (Round 3 P5). Plan is the journey a family
+            is ON; this is the file about the child, which is where a parent looks for
+            "what did we say last time" and "what did the school send". */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-50">
+            <div className="font-black text-sm text-gray-900">History &amp; records</div>
+          </div>
+
+          <div className="px-4 py-3.5 border-b border-gray-50">
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-sm font-bold text-gray-800">Last check-in</div>
+              <Link href={`/checkin?child=${childId}`} className="text-sm text-violet-600 font-semibold py-1 flex-shrink-0">
+                {latestCheckin ? 'All check-ins →' : 'Start →'}
+              </Link>
+            </div>
+            {latestCheckin ? (
+              <>
+                <div className="text-xs text-gray-400 mb-1">
+                  Week {latestCheckin.week_number as number} ·{' '}
+                  {new Date(latestCheckin.completed_at as string).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                </div>
+                {((latestCheckin.wins || []) as string[]).slice(0, 2).map((w, i) => (
+                  <div key={i} className="text-sm text-gray-600 flex gap-1.5 mb-0.5">
+                    <span className="text-emerald-500 flex-shrink-0">✓</span><span>{w}</span>
+                  </div>
+                ))}
+                {((latestCheckin.recommendations || []) as string[]).slice(0, 1).map((r, i) => (
+                  <div key={i} className="text-sm text-gray-600 flex gap-1.5">
+                    <span className="text-violet-400 flex-shrink-0">→</span><span>{r}</span>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <div className="text-sm text-gray-400">A minute each week keeps the plan on track.</div>
+            )}
+          </div>
+
+          {recentLogs.length > 0 && (
+            <div className="px-4 py-3.5">
+              <div className="text-sm font-bold text-gray-800 mb-1.5">Recent practice</div>
+              {recentLogs.map(log => (
+                <div key={log.id as string} className="flex items-center gap-2.5 py-1">
+                  <span className="text-base">{log.rating ? ['','😰','😕','😐','😊','🌟'][log.rating as number] : '✓'}</span>
+                  <span className="flex-1 text-sm text-gray-600 truncate">{log.activity_title as string}</span>
+                  <span className="text-xs text-gray-400 flex-shrink-0">
+                    {new Date(log.logged_at as string).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Quick links */}

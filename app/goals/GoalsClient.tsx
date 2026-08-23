@@ -482,77 +482,32 @@ export default function GoalsClient({ child, goals, recentLogs, proposals, focus
           </section>
         )}
 
-        {/* History & records — Progress folded in here (Round 2): the useful remains */}
+        {/* Round 3 (P5): Plan is the JOURNEY. The filing cabinet — past check-ins,
+            recent practice, the report, the documents — moved to /child ("About X"),
+            which is where a parent actually looks for "what did the school send".
+            The weekly chat stays here because it is an ACTION, not a record. */}
         <section className="pt-4">
-          <h2 className="text-sm font-black text-gray-500 mb-2 px-1">History & records</h2>
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            {/* Last check-in */}
-            <div className="px-4 py-3.5 border-b border-gray-50">
-              <div className="flex items-center justify-between mb-1">
+            <div className="px-4 py-3.5 border-b border-gray-50 flex items-center justify-between gap-3">
+              <div className="min-w-0">
                 <div className="text-sm font-bold text-gray-800">Weekly chat with <PersonaTag persona="eriksson" /></div>
-                <Link href={`/checkin?child=${childId}`} className="text-sm text-violet-600 font-semibold py-1 flex-shrink-0">
-                  {latestCheckin ? 'Open →' : 'Start →'}
-                </Link>
+                <div className="text-sm text-gray-400">
+                  {latestCheckin
+                    ? `Last one: week ${latestCheckin.week_number as number}`
+                    : 'About a minute — it keeps the plan on track'}
+                </div>
               </div>
-              {latestCheckin ? (
-                <>
-                  {((latestCheckin.wins || []) as string[]).slice(0, 2).map((w, i) => (
-                    <div key={i} className="text-sm text-gray-600 flex gap-1.5 mb-0.5">
-                      <span className="text-emerald-500 flex-shrink-0">✓</span><span>{w}</span>
-                    </div>
-                  ))}
-                  {((latestCheckin.recommendations || []) as string[]).slice(0, 1).map((r, i) => (
-                    <div key={i} className="text-sm text-gray-600 flex gap-1.5">
-                      <span className="text-violet-400 flex-shrink-0">→</span><span>{r}</span>
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <div className="text-sm text-gray-400">A 15-minute chat each week keeps the plan on track.</div>
-              )}
+              <Link href={`/checkin?child=${childId}`}
+                className="text-sm font-bold px-4 py-2.5 rounded-full bg-marigold-400 text-marigold-ink flex-shrink-0 min-h-[44px] flex items-center">
+                {latestCheckin ? 'Check in' : 'Start'}
+              </Link>
             </div>
-
-            {/* Recent practice */}
-            {recentLogs.length > 0 && (
-              <div className="px-4 py-3.5 border-b border-gray-50">
-                <div className="text-sm font-bold text-gray-800 mb-1.5">Recent practice</div>
-                {recentLogs.slice(0, 5).map(log => (
-                  <div key={log.id as string} className="flex items-center gap-2.5 py-1">
-                    <span className="text-base">{log.rating ? ['','😰','😕','😐','😊','🌟'][log.rating as number] : '✓'}</span>
-                    <span className="flex-1 text-sm text-gray-600 truncate">{log.activity_title as string}</span>
-                    <span className="text-xs text-gray-400 flex-shrink-0">
-                      {new Date(log.logged_at as string).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Reports & files */}
-            <Link href={`/report?child=${childId}`}
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 border-b border-gray-50 transition">
-              <span className="text-xl">📋</span>
-              <div className="flex-1">
-                <div className="text-sm font-semibold text-gray-800">Progress report</div>
-                <div className="text-xs text-gray-400">Print or save a PDF for school or clinicians</div>
-              </div>
-              <span className="text-gray-300">›</span>
-            </Link>
-            <Link href={`/documents?child=${childId}`}
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 border-b border-gray-50 transition">
-              <span className="text-xl">📄</span>
-              <div className="flex-1">
-                <div className="text-sm font-semibold text-gray-800">Add documents</div>
-                <div className="text-xs text-gray-400">Upload assessments or reports to enrich {childName}&apos;s profile</div>
-              </div>
-              <span className="text-gray-300">›</span>
-            </Link>
             <Link href={`/child?child=${childId}`}
               className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition">
               <span className="text-xl">🧒</span>
               <div className="flex-1">
                 <div className="text-sm font-semibold text-gray-800">About {childName}</div>
-                <div className="text-xs text-gray-400">Details, confirmed profile, and all gathered documents</div>
+                <div className="text-xs text-gray-400">Profile, documents, past check-ins, practice history &amp; report</div>
               </div>
               <span className="text-gray-300">›</span>
             </Link>
