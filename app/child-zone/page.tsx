@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useChildId } from '@/lib/useChildId'
 import { createClient } from '@/lib/supabase/client'
 
 // ── Card data — emoji-first, word shown only AFTER tap (optional label) ────────
@@ -386,7 +387,7 @@ function HomeScreen({ childName, stars, onStart, myWordsLabel }: {
 // ── Main component ─────────────────────────────────────────────────────────────
 function ChildZoneContent() {
   const params = useSearchParams()
-  const childId = params.get('child') || ''
+  const { childId } = useChildId()
   const supabase = createClient()
 
   const [childName, setChildName] = useState('')

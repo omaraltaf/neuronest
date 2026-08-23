@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useChildId } from '@/lib/useChildId'
 import { createClient } from '@/lib/supabase/client'
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -14,7 +15,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 
 function ReportContent() {
   const params = useSearchParams()
-  const childId = params.get('child') || ''
+  const { childId } = useChildId()
   const supabase = createClient()
   const printRef = useRef<HTMLDivElement>(null)
 

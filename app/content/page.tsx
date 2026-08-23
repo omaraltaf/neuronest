@@ -11,6 +11,7 @@ import {
   useAacSymbols,
 } from './aacViewers'
 import PersonaTag from '@/components/PersonaTag'
+import { useChildId } from '@/lib/useChildId'
 
 const CONTENT_TYPES = [
   { id: 'social_story',   icon: '📖', label: 'Social Story',     desc: 'Personalised story with emoji sentences' },
@@ -773,7 +774,7 @@ function GenerateModal({ goals, child, onGenerate, onClose, generating }: {
 
 function ContentContent() {
   const params = useSearchParams()
-  const childId = params.get('child') || ''
+  const { childId } = useChildId()
   const supabase = createClient()
   // Deep link from a goal card on the Plan tab (Round 2): show only that goal's materials
   const [goalFilter, setGoalFilter] = useState<string | null>(params.get('goal'))

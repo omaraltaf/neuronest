@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import TabBar from '@/components/TabBar'
 import AgentText from '@/components/AgentText'
 import Link from 'next/link'
+import { useChildId } from '@/lib/useChildId'
 import type { ChatMessage } from '@/types'
 
 // Ask is a growing knowledge base, not a throwaway chat: every exchange persists to
@@ -57,7 +58,7 @@ function toPairs(messages: ChatMessage[]): QAPair[] {
 
 function AIChatContent() {
   const params = useSearchParams()
-  const childId = params.get('child') || ''
+  const { childId } = useChildId()
   const supabase = createClient()
 
   const [messages, setMessages] = useState<ChatMessage[]>([])

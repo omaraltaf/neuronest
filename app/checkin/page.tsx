@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { ChatMessage } from '@/types'
 import AgentText from '@/components/AgentText'
+import { useChildId } from '@/lib/useChildId'
 import PersonaTag, { PersonaDisclosure } from '@/components/PersonaTag'
 
 function cleanMessage(text: string): string {
@@ -131,7 +132,7 @@ function ChatView({ checkin, childName, weekNumber, isNew, onBack }: {
   onBack: () => void
 }) {
   const params = useSearchParams()
-  const childId = params.get('child') || ''
+  const { childId } = useChildId()
   const supabase = createClient()
 
   const [messages, setMessages] = useState<ChatMessage[]>(
@@ -557,7 +558,7 @@ function QuickView({ childId, childName, weekNumber, goals, onBack, onTalkInstea
 
 function CheckinContent() {
   const params = useSearchParams()
-  const childId = params.get('child') || ''
+  const { childId } = useChildId()
   const supabase = createClient()
 
   const [view, setView] = useState<'history' | 'chat' | 'quick'>('history')
@@ -594,9 +595,9 @@ function CheckinContent() {
         setView('chat')
       }
 
-      setLoading(false)
     }
-    load()
+    // finally, always: a thrown query must never leave the parent on a spinner
+    load().catch(err => console.error('checkin load failed:', err)).finally(() => setLoading(false))
   }, [childId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Quick is the default now; the conversation is one tap away inside it

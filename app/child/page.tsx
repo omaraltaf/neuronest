@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import PersonaTag from '@/components/PersonaTag'
+import { useChildId } from '@/lib/useChildId'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -63,7 +64,7 @@ const EDIT_FIELDS: { key: string; label: string; type?: string }[] = [
 
 function AboutChildContent() {
   const params = useSearchParams()
-  const childId = params.get('child') || ''
+  const { childId } = useChildId()
   const router = useRouter()
   const supabase = createClient()
 

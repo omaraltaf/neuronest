@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { ChatMessage } from '@/types'
 import AgentText from '@/components/AgentText'
 import PersonaTag from '@/components/PersonaTag'
+import { useChildId } from '@/lib/useChildId'
 
 interface DocRecord {
   id: string
@@ -36,7 +37,7 @@ const DOC_TYPES = [
 function DocumentsContent() {
   const params = useSearchParams()
   const router = useRouter()
-  const childId = params.get('child') || ''
+  const { childId } = useChildId()
   const supabase = createClient()
 
   const [docs, setDocs]                   = useState<DocRecord[]>([])
