@@ -187,8 +187,8 @@ Round 3 removes it from Today anyway, because P3 creates a home that did not exi
 
 | Step | Scope | Touches | Depends on |
 |---|---|---|---|
-| 1 | **P1** AI disclosure | new `components/PersonaTag.tsx` + new about page; `DashboardClient`, `checkin`, `goals`, `content`, `ai`, `account`, `onboarding/*` | — |
-| 2 | **P3** 60-second check-in | `app/checkin/page.tsx`, `/api/checkin`, `lib/agents/prompts.ts`; downstream consumers must still receive what they read today | — |
+| 1 | ~~**P1** AI disclosure~~ **DONE 2026-08-23** | new `components/PersonaTag.tsx` + new about page; `DashboardClient`, `checkin`, `goals`, `content`, `ai`, `account`, `onboarding/*` | — |
+| 2 | ~~**P3** 60-second check-in~~ **DONE 2026-08-23** | `app/checkin/page.tsx`, `/api/checkin`, `lib/agents/prompts.ts`; downstream consumers must still receive what they read today | — |
 | 3 | **P2** Today subtraction | `DashboardClient.tsx` only (hero, week-ahead removal, log affordance, Child Zone weight) | P3 |
 | 4 | **P5** IA cleanup | `goals/GoalsClient.tsx`, `app/child/page.tsx` | — |
 | 5 | **P4** Intake cap | `lib/agents/prompts.ts`, `app/onboarding/intake/page.tsx` | — |

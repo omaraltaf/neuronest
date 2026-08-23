@@ -330,30 +330,259 @@ function ChatView({ checkin, childName, weekNumber, isNew, onBack }: {
   )
 }
 
+
+// ── The 60-second check-in (UX_PLAN Round 3, P3) ──────────────────────────────
+// The default way to check in. The conversation still exists one tap away, but it
+// costs ~15 minutes and 13-19 turns, so it was being skipped — and everything
+// downstream of a check-in (the weekly re-plan, goal status proposals, coaching
+// patterns, the family calendar) starves when that happens. Three taps and an
+// optional sentence produce the SAME summary contract the conversation produced.
+const WELLBEING = [
+  { v: 1, label: 'Running on empty' },
+  { v: 2, label: 'Hard week' },
+  { v: 3, label: 'Getting by' },
+  { v: 4, label: 'Pretty good' },
+  { v: 5, label: 'Really good' },
+]
+
+function QuickView({ childId, childName, weekNumber, goals, onBack, onTalkInstead }: {
+  childId: string
+  childName: string
+  weekNumber: number
+  goals: { id: string; label: string }[]
+  onBack: () => void
+  onTalkInstead: () => void
+}) {
+  const supabase = createClient()
+  const [wentWell, setWentWell] = useState<string[]>([])
+  const [wasHard, setWasHard] = useState<string[]>([])
+  const [wellNote, setWellNote] = useState('')
+  const [hardNote, setHardNote] = useState('')
+  const [wellbeing, setWellbeing] = useState<number | null>(null)
+  const [weekAhead, setWeekAhead] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [reflection, setReflection] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const chips = goals.slice(0, 6).map(g => g.label)
+  const toggle = (list: string[], set: (v: string[]) => void, item: string) =>
+    set(list.includes(item) ? list.filter(x => x !== item) : [...list, item])
+
+  // Something must have been said — otherwise there is nothing honest to summarise
+  const canSubmit = !saving && (wentWell.length || wasHard.length || wellNote.trim() || hardNote.trim() || wellbeing)
+
+  const submit = async () => {
+    setSaving(true); setError(null)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('not signed in')
+
+      const answers = {
+        went_well: wentWell,
+        went_well_note: wellNote.trim() || null,
+        was_hard: wasHard,
+        was_hard_note: hardNote.trim() || null,
+        parent_wellbeing_1_to_5: wellbeing,
+        parent_wellbeing_label: WELLBEING.find(w => w.v === wellbeing)?.label || null,
+        week_ahead: weekAhead.trim() || null,
+      }
+
+      const res = await fetch('/api/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'quick', childId, childName, weekNumber, answers }),
+      })
+      const { ok, summary, error: apiError } = await res.json()
+      if (!ok) throw new Error(apiError || 'could not save')
+
+      // A readable transcript, so the consumers that read `messages` (goal status
+      // proposals, the report) see a real exchange rather than an empty array.
+      const transcript: ChatMessage[] = [
+        { role: 'user', content: [
+            wentWell.length || wellNote ? `What went well: ${[...wentWell, wellNote].filter(Boolean).join('; ')}` : null,
+            wasHard.length || hardNote ? `What was hard: ${[...wasHard, hardNote].filter(Boolean).join('; ')}` : null,
+            wellbeing ? `How I'm doing: ${WELLBEING.find(w => w.v === wellbeing)?.label}` : null,
+            weekAhead.trim() ? `Coming up: ${weekAhead.trim()}` : null,
+          ].filter(Boolean).join('\n'), timestamp: new Date().toISOString() },
+        { role: 'assistant', content: summary.reflection, timestamp: new Date().toISOString() },
+      ]
+
+      await supabase.from('weekly_checkins').insert({
+        child_id: childId, user_id: user.id,
+        week_number: weekNumber,
+        messages: transcript,
+        completed_at: new Date().toISOString(),
+        wins: summary.wins || [],
+        challenges: summary.challenges || [],
+        recommendations: summary.recommendations || [],
+        // Written for the first time here — the chat path asks the model for these
+        // and then drops them, so the weekly planner has always read NULLs.
+        parent_wellbeing: wellbeing ? wellbeing * 2 : null,
+        goal_assessments: summary.goal_assessments || [],
+        escalation_flags: summary.escalation_flags || [],
+      })
+
+      await supabase.from('app_state').update({
+        last_checkin_at: new Date().toISOString(),
+        current_week: weekNumber + 1,
+        next_checkin_due: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+      }).eq('child_id', childId)
+
+      // Same downstream fan-out as the conversation, so nothing regresses
+      fetch('/api/weekly-focus', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ childId, force: true, trigger: 'checkin' }),
+      }).catch(() => {})
+      fetch('/api/goal-status-proposals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ childId }),
+      }).catch(() => {})
+      // The week-ahead answer keeps its existing home: calendar extraction plus
+      // material prepared ahead of a named event (Round 3 moves the question here
+      // from Today, so this call is what stops that loop from starving).
+      if (weekAhead.trim()) {
+        fetch('/api/weekly-focus', {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ childId, answer: weekAhead.trim() }),
+        }).catch(() => {})
+      }
+
+      setReflection(summary.reflection)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong — please try again')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (reflection) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="text-xs text-gray-400 mb-2"><PersonaTag persona="eriksson" full /></div>
+            <AgentText text={reflection} className="text-sm text-gray-700 leading-relaxed" />
+          </div>
+          <div className="bg-violet-50 border border-violet-100 rounded-2xl p-4 text-sm text-violet-700 leading-relaxed">
+            🌱 I&apos;m reworking this week&apos;s plan around what you just told me. Give me a minute, then have a look at Today.
+          </div>
+          <button onClick={onBack}
+            className="w-full py-3.5 rounded-2xl bg-marigold-400 text-marigold-ink font-black text-sm min-h-[48px]">
+            Done
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const Section = ({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) => (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+      <div className="font-black text-sm text-gray-900">{title}</div>
+      {sub && <div className="text-xs text-gray-400 mt-0.5 mb-2.5">{sub}</div>}
+      <div className={sub ? '' : 'mt-2.5'}>{children}</div>
+    </div>
+  )
+
+  const Chip = ({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) => (
+    <button onClick={onClick}
+      className={`text-sm font-semibold px-3.5 py-2.5 rounded-full min-h-[44px] transition text-left ${
+        on ? 'bg-fjord-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+      }`}>
+      {on ? '✓ ' : ''}{label}
+    </button>
+  )
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+          <button onClick={onBack} aria-label="Back" className="text-gray-400 hover:text-gray-600 text-lg w-11 h-11 -ml-2">←</button>
+          <div className="flex-1">
+            <div className="font-black text-sm text-gray-900">Week {weekNumber} check-in</div>
+            <div className="text-[10px] text-gray-400"><PersonaTag persona="eriksson" full /> · about a minute</div>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-2xl mx-auto px-4 py-4 space-y-3 pb-16">
+        <Section title={`What went well with ${childName} this week?`} sub="Tap any that apply, or write your own">
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {chips.map(c => <Chip key={c} label={c} on={wentWell.includes(c)} onClick={() => toggle(wentWell, setWentWell, c)} />)}
+          </div>
+          <input value={wellNote} onChange={e => setWellNote(e.target.value)}
+            placeholder="Anything else? One line is plenty…"
+            className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-violet-400 transition min-h-[44px]" />
+        </Section>
+
+        <Section title="What was hard?" sub="Nothing here is a failure — it is how the plan learns">
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {chips.map(c => <Chip key={c} label={c} on={wasHard.includes(c)} onClick={() => toggle(wasHard, setWasHard, c)} />)}
+          </div>
+          <input value={hardNote} onChange={e => setHardNote(e.target.value)}
+            placeholder="Anything else?…"
+            className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-violet-400 transition min-h-[44px]" />
+        </Section>
+
+        <Section title="And how are YOU doing?">
+          <div className="flex flex-wrap gap-1.5">
+            {WELLBEING.map(w => (
+              <Chip key={w.v} label={w.label} on={wellbeing === w.v} onClick={() => setWellbeing(wellbeing === w.v ? null : w.v)} />
+            ))}
+          </div>
+        </Section>
+
+        <Section title="Anything coming up next week?" sub="A trip, a visitor, a change of routine — I'll prepare for it">
+          <input value={weekAhead} onChange={e => setWeekAhead(e.target.value)}
+            placeholder="Optional — one sentence…"
+            className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-violet-400 transition min-h-[44px]" />
+        </Section>
+
+        {error && (
+          <div className="bg-red-50 border border-red-100 rounded-2xl p-3 text-sm text-red-700">{error}</div>
+        )}
+
+        <button onClick={submit} disabled={!canSubmit}
+          className="w-full py-4 rounded-2xl bg-marigold-400 text-marigold-ink font-black text-sm disabled:opacity-40 min-h-[52px] transition">
+          {saving ? 'Saving…' : "That's it — done"}
+        </button>
+
+        <button onClick={onTalkInstead}
+          className="w-full py-3 text-sm font-bold text-violet-600 min-h-[44px]">
+          Rather talk it through with Dr. Eriksson? →
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function CheckinContent() {
   const params = useSearchParams()
   const childId = params.get('child') || ''
   const supabase = createClient()
 
-  const [view, setView] = useState<'history' | 'chat'>('history')
+  const [view, setView] = useState<'history' | 'chat' | 'quick'>('history')
   const [checkins, setCheckins] = useState<Checkin[]>([])
   const [selectedCheckin, setSelectedCheckin] = useState<Checkin | null>(null)
   const [isNewCheckin, setIsNewCheckin] = useState(false)
   const [childName, setChildName] = useState('')
   const [weekNumber, setWeekNumber] = useState(1)
+  const [goals, setGoals] = useState<{ id: string; label: string }[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!childId) return
     const load = async () => {
-      const [{ data: child }, { data: appState }, { data: allCheckins }] = await Promise.all([
+      const [{ data: child }, { data: appState }, { data: allCheckins }, { data: activeGoals }] = await Promise.all([
         supabase.from('children').select('name').eq('id', childId).single(),
         supabase.from('app_state').select('*').eq('child_id', childId).maybeSingle(),
         supabase.from('weekly_checkins').select('*').eq('child_id', childId)
           .order('created_at', { ascending: false }),
+        supabase.from('goals').select('id, label').eq('child_id', childId)
+          .in('status', ['in_progress', 'emerging', 'not_started']),
       ])
 
       if (child) setChildName(child.name)
+      setGoals((activeGoals || []) as { id: string; label: string }[])
       setWeekNumber(appState?.current_week || 1)
       setCheckins((allCheckins || []) as Checkin[])
 
@@ -370,10 +599,11 @@ function CheckinContent() {
     load()
   }, [childId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Quick is the default now; the conversation is one tap away inside it
   const handleNewCheckin = () => {
     setSelectedCheckin(null)
     setIsNewCheckin(true)
-    setView('chat')
+    setView('quick')
   }
 
   const handleSelectCheckin = (c: Checkin) => {
@@ -398,6 +628,19 @@ function CheckinContent() {
           <div className="text-sm text-gray-500">Loading check-ins…</div>
         </div>
       </div>
+    )
+  }
+
+  if (view === 'quick') {
+    return (
+      <QuickView
+        childId={childId}
+        childName={childName}
+        weekNumber={weekNumber}
+        goals={goals}
+        onBack={handleBack}
+        onTalkInstead={() => setView('chat')}
+      />
     )
   }
 
