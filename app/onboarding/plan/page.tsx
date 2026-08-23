@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { PLANNING_AGENT_PROMPT, buildChildContext } from '@/lib/agents/prompts'
 import type { Child, ChildProfile, ChatMessage } from '@/types'
+import AgentText from '@/components/AgentText'
 
 const AREA_COLORS: Record<string, string> = {
   communication: '#D55E38', social: '#4A6FA5', sensory: '#7C9885',
@@ -354,9 +355,11 @@ Open by acknowledging what you already know about their main concerns, then pres
         <div className="px-4 py-4 space-y-3 max-h-64 overflow-y-auto">
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={msg.role === 'user' ? 'chat-user' : 'chat-ai'} style={{ whiteSpace: 'pre-wrap' }}>
-                {msg.content}
-              </div>
+              {msg.role === 'user' ? (
+                <div className="chat-user" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+              ) : (
+                <AgentText text={msg.content} className="chat-ai" />
+              )}
             </div>
           ))}
           {loading && (

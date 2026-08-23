@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { INTAKE_AGENT_PROMPT, buildChildContext } from '@/lib/agents/prompts'
 import { cleanAgentResponse, extractConfidenceUpdate } from '@/lib/agents/caller'
 import type { ChatMessage, DomainConfidence, Child } from '@/types'
+import AgentText from '@/components/AgentText'
 
 const DOMAIN_LABELS: Record<keyof DomainConfidence, string> = {
   communication: 'Communication',
@@ -289,9 +290,11 @@ function IntakeContent() {
                 {msg.role === 'assistant' && (
                   <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-xs mr-2 flex-shrink-0 mt-1">👩‍⚕️</div>
                 )}
-                <div className={msg.role === 'user' ? 'chat-user' : 'chat-ai'} style={{ whiteSpace: 'pre-wrap' }}>
-                  {msg.content}
-                </div>
+                {msg.role === 'user' ? (
+                  <div className="chat-user" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                ) : (
+                  <AgentText text={msg.content} className="chat-ai" />
+                )}
               </div>
             ))}
             {loading && (

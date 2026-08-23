@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { buildChildContext } from '@/lib/agents/prompts'
 import type { Child, ChatMessage } from '@/types'
+import AgentText from '@/components/AgentText'
 
 interface ProfileSection {
   key: string
@@ -737,9 +738,11 @@ function ProfileContent() {
                   {msg.role === 'assistant' && (
                     <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-xs flex-shrink-0 mt-1">👩‍⚕️</div>
                   )}
-                  <div className={msg.role === 'user' ? 'chat-user' : 'chat-ai'} style={{ whiteSpace: 'pre-wrap' }}>
-                    {msg.content}
-                  </div>
+                  {msg.role === 'user' ? (
+                    <div className="chat-user" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                  ) : (
+                    <AgentText text={msg.content} className="chat-ai" />
+                  )}
                 </div>
               ))}
               {enrichmentLoading && (

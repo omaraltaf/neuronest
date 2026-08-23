@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import TabBar from '@/components/TabBar'
+import AgentText from '@/components/AgentText'
 import type { ChatMessage } from '@/types'
 
 // Ask is a growing knowledge base, not a throwaway chat: every exchange persists to
@@ -10,22 +11,6 @@ import type { ChatMessage } from '@/types'
 // (field feedback 2026-07-16): Today is always visible; Yesterday / Last week /
 // Last month / Older are collapsed headers that render only when tapped. Search (🔍)
 // covers everything regardless of collapse state, with date-range filters.
-
-const SYSTEM_PROMPT = `You are the NeuroNest AI assistant — a warm, knowledgeable companion for parents of children with ASD. You have access to this child's full profile, plan, and goals.
-
-You answer questions about:
-- How to do specific activities from the plan
-- Why certain goals were chosen
-- What to do when something isn't working
-- How to explain ASD concepts to family members
-- School communication strategies
-- Sensory strategies for specific situations
-- Norwegian special education rights (PPT, IOP, BUP, Habiliteringstjenesten, Opplæringslova §5-1)
-- Celebrating and interpreting progress
-
-Be specific to THIS child — always reference their name and what you know about them.
-Be honest about limitations — if something requires a professional, say so clearly.
-Be warm, practical, and direct. Parents don't have time for vague answers.`
 
 const MAX_SAVED_MESSAGES = 200
 
@@ -196,7 +181,7 @@ function AIChatContent() {
       {pair.a && (
         <div className="flex gap-2 justify-start">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-sm flex-shrink-0 mt-1">🧠</div>
-          <div className="chat-ai" style={{ whiteSpace: 'pre-wrap' }}>{pair.a.content}</div>
+          <AgentText text={pair.a.content} className="chat-ai" />
         </div>
       )}
     </div>

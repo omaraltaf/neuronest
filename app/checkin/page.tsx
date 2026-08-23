@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { ChatMessage } from '@/types'
+import AgentText from '@/components/AgentText'
 
 function cleanMessage(text: string): string {
   return text
@@ -283,9 +284,11 @@ function ChatView({ checkin, childName, weekNumber, isNew, onBack }: {
             {msg.role === 'assistant' && (
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 flex items-center justify-center text-xs flex-shrink-0 mt-1">👩‍⚕️</div>
             )}
-            <div className={msg.role === 'user' ? 'chat-user' : 'chat-ai'} style={{ whiteSpace: 'pre-wrap' }}>
-              {msg.content}
-            </div>
+            {msg.role === 'user' ? (
+              <div className="chat-user" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+            ) : (
+              <AgentText text={msg.content} className="chat-ai" />
+            )}
           </div>
         ))}
         {loading && (
